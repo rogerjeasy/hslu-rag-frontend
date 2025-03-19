@@ -17,7 +17,7 @@ interface CourseTabsProps {
 
 export function CourseTabs({ 
   courses, 
-  activeTab, 
+  // activeTab, 
   visibleCourses, 
   onTabChange 
 }: CourseTabsProps): JSX.Element {

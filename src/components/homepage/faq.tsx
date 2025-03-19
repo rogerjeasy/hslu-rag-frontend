@@ -104,6 +104,60 @@ export function Faq() {
   // Filter FAQ items by active category
   const filteredItems = faqItems.filter(item => item.category === activeCategory);
 
+  // If not mounted yet (server-side rendering), show a simplified version
+  if (!isMounted) {
+    return (
+      <section className="py-16 md:py-24 bg-gradient-to-b from-white to-blue-50">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+              Frequently Asked Questions
+            </h2>
+            <p className="mt-4 text-lg text-gray-600 max-w-3xl mx-auto">
+              Find answers to common questions about our HSLU Data Science Exam Preparation Assistant.
+            </p>
+          </div>
+
+          {/* Static version without animations for SSR */}
+          <div className="flex flex-wrap justify-center gap-2 mb-10">
+            {categories.map(category => (
+              <Button
+                key={category.id}
+                variant={activeCategory === category.id ? "default" : "outline"}
+                className={`
+                  flex items-center gap-2 
+                  ${activeCategory === category.id ? 
+                    'bg-blue-600 text-white hover:bg-blue-700' : 
+                    'border-gray-200 text-gray-700 hover:bg-gray-50'}
+                `}
+              >
+                {category.icon}
+                {category.name}
+              </Button>
+            ))}
+          </div>
+
+          <Card className="border-gray-200 bg-white shadow-sm">
+            <CardContent className="pt-6">
+              <Accordion type="single" collapsible className="w-full">
+                {filteredItems.map((item) => (
+                  <AccordionItem key={item.id} value={item.id} className="border-b border-gray-100">
+                    <AccordionTrigger className="text-left font-medium text-gray-900 hover:text-blue-600 hover:no-underline">
+                      {item.question}
+                    </AccordionTrigger>
+                    <AccordionContent className="text-gray-600">
+                      <p>{item.answer}</p>
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="py-16 md:py-24 bg-gradient-to-b from-white to-blue-50">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -149,12 +203,30 @@ export function Faq() {
               <CardContent className="pt-6">
                 <Accordion type="single" collapsible className="w-full">
                   {filteredItems.map((item, index) => (
-                    <AccordionItem key={item.id} value={item.id} className="border-b border-gray-100">
-                      <AccordionTrigger className="text-left font-medium text-gray-900 hover:text-blue-600 hover:no-underline">
-                        {item.question}
+                    <AccordionItem 
+                      key={item.id} 
+                      value={item.id} 
+                      className="border-b border-gray-100"
+                    >
+                      <AccordionTrigger 
+                        className="text-left font-medium text-gray-900 hover:text-blue-600 hover:no-underline"
+                      >
+                        <motion.span
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: index * 0.1 }}
+                        >
+                          {item.question}
+                        </motion.span>
                       </AccordionTrigger>
                       <AccordionContent className="text-gray-600">
-                        <p>{item.answer}</p>
+                        <motion.p
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.3, delay: 0.1 + (index * 0.05) }}
+                        >
+                          {item.answer}
+                        </motion.p>
                       </AccordionContent>
                     </AccordionItem>
                   ))}
@@ -168,7 +240,7 @@ export function Faq() {
         <div className="mt-12 text-center">
           <div className="inline-flex items-center gap-2 text-sm text-gray-600 mb-2">
             <Users className="h-4 w-4 text-blue-500" />
-            <span>Can't find what you're looking for?</span>
+            <span>Can&apos;t find what you&apos;re looking for?</span>
           </div>
           <h3 className="text-xl font-medium text-gray-900">Contact our support team for additional help</h3>
           <p className="mt-2 text-sm text-gray-600 max-w-lg mx-auto">

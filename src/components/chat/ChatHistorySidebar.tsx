@@ -161,7 +161,7 @@ export default function ChatHistorySidebar({
           </div>
         ) : searchQuery ? (
           <div className="p-3 sm:p-4 text-center text-muted-foreground text-xs sm:text-sm animate-fadeIn">
-            No conversations matching "{searchQuery}"
+            No conversations matching &quot;{searchQuery}&quot;
           </div>
         ) : (
           <div className="p-3 sm:p-4 text-center text-muted-foreground text-xs sm:text-sm animate-fadeIn">
@@ -255,12 +255,12 @@ function ConversationItem({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-36 animate-fadeIn bg-background/95 backdrop-blur-md border-border/50">
-                <DropdownMenuItem onClick={(e) => {
+              <DropdownMenuItem onClick={(e: React.MouseEvent<HTMLDivElement>) => {
                   e.stopPropagation();
-                  onTogglePin(conversation.id, e as any);
+                  onTogglePin(conversation.id, e);
                 }}
                 className="transition-colors duration-200 focus:bg-primary/10 focus:text-primary"
-                >
+              >
                   {conversation.pinned ? (
                     <>
                       <PinOff className="h-3.5 w-3.5 mr-2" />
@@ -275,9 +275,9 @@ function ConversationItem({
                 </DropdownMenuItem>
                 <DropdownMenuItem 
                   className="text-destructive focus:text-destructive focus:bg-destructive/10 transition-colors duration-200"
-                  onClick={(e) => {
+                  onClick={(e: React.MouseEvent<HTMLDivElement>) => {
                     e.stopPropagation();
-                    onDelete(conversation.id, e as any);
+                    onDelete(conversation.id, e);
                   }}
                 >
                   <Trash className="h-3.5 w-3.5 mr-2" />

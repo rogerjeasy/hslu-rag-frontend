@@ -1,5 +1,3 @@
-import { RefObject } from "react";
-
 // Message role types
 export type MessageRole = 'user' | 'assistant' | 'system';
 

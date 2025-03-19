@@ -10,6 +10,11 @@ import CodeBlock from '../chat/CodeBlock';
 import { Components } from 'react-markdown';
 import React from 'react';
 
+// Define custom props interface for code component
+interface CodeProps extends React.ComponentPropsWithoutRef<'code'> {
+  inline?: boolean;
+}
+
 interface MarkdownProps {
   content: string;
 }
@@ -32,10 +37,10 @@ export default function Markdown({ content }: MarkdownProps) {
 
   // Define custom components for markdown rendering
   const components: Components = {
-    code: ({ inline, className, children, ...props }: any) => {
+    code: ({ inline, className, children, ...props }: CodeProps) => {
       const match = /language-(\w+)/.exec(className || '');
       const language = match ? match[1] : '';
-      
+     
       if (!inline && language) {
         return (
           <CodeBlock
@@ -44,7 +49,7 @@ export default function Markdown({ content }: MarkdownProps) {
           />
         );
       }
-      
+     
       return inline ? (
         <code className={className} {...props}>
           {children}
@@ -56,8 +61,8 @@ export default function Markdown({ content }: MarkdownProps) {
         />
       );
     },
-    
-    a: ({ href, children, ...props }: any) => {
+   
+    a: ({ href, children, ...props }: React.ComponentPropsWithoutRef<'a'>)  => {
       return (
         <a
           href={href}
@@ -70,8 +75,8 @@ export default function Markdown({ content }: MarkdownProps) {
         </a>
       );
     },
-    
-    table: ({ children, ...props }: any) => {
+   
+    table: ({ children, ...props }: React.ComponentPropsWithoutRef<'table'>) => {
       return (
         <div className="overflow-x-auto my-4">
           <table className="border-collapse border border-border w-full" {...props}>
@@ -80,16 +85,16 @@ export default function Markdown({ content }: MarkdownProps) {
         </div>
       );
     },
-    
-    th: ({ children, ...props }: any) => {
+   
+    th: ({ children, ...props }: React.ComponentPropsWithoutRef<'th'>) => {
       return (
         <th className="border border-border bg-muted px-4 py-2 text-left" {...props}>
           {children}
         </th>
       );
     },
-    
-    td: ({ children, ...props }: any) => {
+   
+    td: ({ children, ...props }: React.ComponentPropsWithoutRef<'td'>) => {
       return (
         <td className="border border-border px-4 py-2" {...props}>
           {children}

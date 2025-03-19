@@ -23,6 +23,7 @@ export default function ChatControls({
   const exportConversation = () => {
     // This would normally retrieve current chat from state or context
     // and generate a file for download
+    console.log(isMobile ? 'Export chat' : 'Export conversation');
     console.log('Export conversation');
   };
 

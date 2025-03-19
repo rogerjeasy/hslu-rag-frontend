@@ -2,7 +2,8 @@
 import { cn } from "@/lib/utils"
 import React from "react"
 
-interface VisuallyHiddenProps extends React.HTMLAttributes<HTMLSpanElement> {}
+// Using type alias instead of empty interface
+type VisuallyHiddenProps = React.HTMLAttributes<HTMLSpanElement>
 
 const VisuallyHidden = React.forwardRef<HTMLSpanElement, VisuallyHiddenProps>(
   ({ className, ...props }, ref) => {
@@ -22,6 +23,7 @@ const VisuallyHidden = React.forwardRef<HTMLSpanElement, VisuallyHiddenProps>(
     )
   }
 )
+
 VisuallyHidden.displayName = "VisuallyHidden"
 
 export { VisuallyHidden }

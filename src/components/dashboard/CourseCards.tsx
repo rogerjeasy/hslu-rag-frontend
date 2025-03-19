@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { BookOpen, Clock } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 const containerVariants = {

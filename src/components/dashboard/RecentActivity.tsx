@@ -3,8 +3,8 @@
 
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BookOpen, FileQuestion, Bookmark, Check, FileText } from 'lucide-react';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { BookOpen, FileQuestion, Bookmark, FileText } from 'lucide-react';
+// import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 
 export default function RecentActivity() {

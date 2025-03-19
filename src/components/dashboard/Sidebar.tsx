@@ -10,7 +10,6 @@ import {
   BookMarked, 
   FileQuestion, 
   Settings, 
-  Menu, 
   LogOut,
   ChevronRight,
   X

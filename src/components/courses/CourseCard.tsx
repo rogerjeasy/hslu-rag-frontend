@@ -99,7 +99,7 @@ export function CourseCard({ course }: CourseCardProps): JSX.Element {
             colorClasses.border,
             "bg-white bg-opacity-50"
           )}>
-            <p className="text-gray-700 text-sm italic">"{course.sampleQuestion}"</p>
+            <p className="text-gray-700 text-sm italic">&quot;{course.sampleQuestion}&quot;</p>
           </div>
           
           {course.highlights && (

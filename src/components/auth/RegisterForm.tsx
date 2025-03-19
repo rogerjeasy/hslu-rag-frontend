@@ -128,7 +128,7 @@ export function RegisterForm(): JSX.Element {
     
     try {
       // Make API call to register the user
-      const response = await api.post('/auth/register', formData);
+      await api.post('/auth/register', formData);
       
       // Show success modal instead of redirecting immediately
       setShowSuccessModal(true);

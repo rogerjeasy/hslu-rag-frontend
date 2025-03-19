@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode, useState, useEffect } from 'react';
-import { AuthContext } from '@/lib/hooks/useAuth';
+import { AuthContext, User } from '@/lib/hooks/useAuth';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Menu, X, BookOpen, Settings, Loader2, ChevronUp, ChevronDown, Sparkles } from 'lucide-react';
+import { Menu, X, BookOpen, Settings, Loader2, ChevronUp, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import SubjectSelector from './SubjectSelector';
 import ModelSelector from './ModelSelector';

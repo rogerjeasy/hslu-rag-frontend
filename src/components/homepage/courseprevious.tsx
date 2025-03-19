@@ -22,7 +22,6 @@ import { CourseStats } from '@/components/courses/CourseStats'
 export function CoursePreview(): JSX.Element {
   // Component state
   const [activeTab, setActiveTab] = useState<string>('machine-learning');
-  const [isMounted, setIsMounted] = useState<boolean>(false);
   const [visibleCourses, setVisibleCourses] = useState<number>(6);
   
   // Refs and animation hooks
@@ -32,10 +31,8 @@ export function CoursePreview(): JSX.Element {
   // Get active course data
   const activeCourse = courses.find(course => course.id === activeTab);
 
-  // Set mounted state and handle responsive behavior
+  // Handle responsive behavior
   useEffect(() => {
-    setIsMounted(true);
-    
     // Adjust visible courses based on screen width
     const handleResize = () => {
       if (typeof window !== 'undefined') {

@@ -1,7 +1,7 @@
 // src/lib/hooks/useAuth.ts
-import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import { createContext, useContext } from 'react';
 
-interface User {
+export interface User {
   id: string;
   name: string;
   email: string;

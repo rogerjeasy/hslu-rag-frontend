@@ -1,5 +1,4 @@
 'use client';
-
 import {
   LineChart,
   Line,
@@ -15,17 +14,22 @@ import {
 
 type ChartType = 'line' | 'bar';
 
-interface DataChartProps {
-  data: any[];
+// Define a generic data item type
+interface DataItem {
+  [key: string]: string | number;
+}
+
+interface DataChartProps<T extends DataItem> {
+  data: T[];
   type?: ChartType;
-  xKey: string;
-  yKeys: string[];
+  xKey: keyof T;
+  yKeys: Array<keyof T>;
   colors?: string[];
   title?: string;
   height?: number;
 }
 
-export default function DataChart({
+export default function DataChart<T extends DataItem>({
   data,
   type = 'line',
   xKey,
@@ -33,22 +37,22 @@ export default function DataChart({
   colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE'],
   title,
   height = 300,
-}: DataChartProps) {
+}: DataChartProps<T>) {
   const renderChart = () => {
     switch (type) {
       case 'line':
         return (
           <LineChart data={data}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey={xKey} />
+            <XAxis dataKey={xKey as string} />
             <YAxis />
             <Tooltip />
             <Legend />
             {yKeys.map((key, index) => (
               <Line
-                key={key}
+                key={key as string}
                 type="monotone"
-                dataKey={key}
+                dataKey={key as string}
                 stroke={colors[index % colors.length]}
                 activeDot={{ r: 8 }}
               />
@@ -59,21 +63,30 @@ export default function DataChart({
         return (
           <BarChart data={data}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey={xKey} />
+            <XAxis dataKey={xKey as string} />
             <YAxis />
             <Tooltip />
             <Legend />
             {yKeys.map((key, index) => (
               <Bar
-                key={key}
-                dataKey={key}
+                key={key as string}
+                dataKey={key as string}
                 fill={colors[index % colors.length]}
               />
             ))}
           </BarChart>
         );
       default:
-        return null;
+        // Return empty LineChart as fallback instead of null
+        return (
+          <LineChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey={xKey as string} />
+            <YAxis />
+            <Tooltip />
+            <Legend />
+          </LineChart>
+        );
     }
   };
 

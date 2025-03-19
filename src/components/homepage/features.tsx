@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { motion, useInView, useAnimationControls } from 'framer-motion'
+import { motion, useInView } from 'framer-motion'
 import { 
   MessageSquare, 
   BookOpen, 
@@ -29,7 +29,7 @@ const FeatureCard = ({
 }: FeatureCardProps) => {
   const ref = useRef(null)
   const isInView = useInView(ref, { once: true, margin: "-100px 0px" })
-  const controls = useAnimationControls()
+  // const controls = useAnimationControls()
   const [isHovered, setIsHovered] = useState(false)
   
   const gradientMap = {
@@ -277,6 +277,90 @@ export function Features() {
         ease: "easeOut"
       }
     }
+  }
+
+  // If not mounted yet, prevent animations from running
+  if (!isMounted) {
+    return (
+      <section ref={sectionRef} className="relative py-16 md:py-24 bg-white overflow-hidden">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-3xl text-center mb-16">
+            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+              Powerful Features for<br className="sm:hidden" />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600"> Better Learning</span>
+            </h2>
+            <p className="mt-4 text-lg text-gray-600">
+              Our intelligent study assistant provides everything you need to succeed in your 
+              HSLU Data Science courses with AI-enhanced learning tools.
+            </p>
+          </div>
+          
+          {/* Static feature grids without animations */}
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {features.map((feature) => (
+              <div 
+                key={feature.title}
+                className={`relative flex flex-col h-full rounded-2xl border border-${feature.accentColor}-100 bg-${feature.accentColor}-50 p-6 shadow-sm overflow-hidden`}
+              >
+                {/* Simple static content for server-side rendering */}
+                <div className="relative z-10 flex flex-col h-full">
+                  <div className="mb-5">
+                    <span className={`inline-flex items-center justify-center rounded-xl p-3 bg-${feature.accentColor}-50 bg-opacity-70`}>
+                      <div className={`h-6 w-6 text-${feature.accentColor}-600`}>
+                        {feature.icon}
+                      </div>
+                    </span>
+                  </div>
+                  <div className="flex-grow">
+                    <h3 className={`text-lg font-semibold mb-2 text-gray-900`}>
+                      {feature.title}
+                    </h3>
+                    <p className="text-gray-600 text-sm leading-relaxed">
+                      {feature.description}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          {/* Secondary features */}
+          <div className="mt-16">
+            <h3 className="text-xl font-semibold text-center mb-8 text-gray-900">
+              Additional Learning Support
+            </h3>
+            
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+              {extraFeatures.map((feature) => (
+                <div 
+                  key={feature.title}
+                  className={`relative flex flex-col h-full rounded-2xl border border-${feature.accentColor}-100 bg-${feature.accentColor}-50 p-6 shadow-sm overflow-hidden`}
+                >
+                  {/* Simple static content for server-side rendering */}
+                  <div className="relative z-10 flex flex-col h-full">
+                    <div className="mb-5">
+                      <span className={`inline-flex items-center justify-center rounded-xl p-3 bg-${feature.accentColor}-50 bg-opacity-70`}>
+                        <div className={`h-6 w-6 text-${feature.accentColor}-600`}>
+                          {feature.icon}
+                        </div>
+                      </span>
+                    </div>
+                    <div className="flex-grow">
+                      <h3 className={`text-lg font-semibold mb-2 text-gray-900`}>
+                        {feature.title}
+                      </h3>
+                      <p className="text-gray-600 text-sm leading-relaxed">
+                        {feature.description}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+    )
   }
 
   return (

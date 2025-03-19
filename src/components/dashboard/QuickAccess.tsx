@@ -2,8 +2,8 @@
 "use client";
 
 import { motion } from 'framer-motion';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { BookOpen, FileText, Clock, GraduationCap, Search } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardTitle } from '@/components/ui/card';
+import { FileText, Clock, GraduationCap, Search } from 'lucide-react';
 
 export default function QuickAccess() {
   const quickLinks = [

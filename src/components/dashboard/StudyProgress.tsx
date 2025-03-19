@@ -18,12 +18,12 @@ export default function StudyProgress() {
     { name: 'Sun', hours: 0.5, questions: 5 },
   ];
 
-  const monthlyData = [
-    { name: 'Week 1', hours: 8.5, questions: 85 },
-    { name: 'Week 2', hours: 10.2, questions: 102 },
-    { name: 'Week 3', hours: 12.5, questions: 125 },
-    { name: 'Week 4', hours: 9.8, questions: 98 },
-  ];
+  // const monthlyData = [
+  //   { name: 'Week 1', hours: 8.5, questions: 85 },
+  //   { name: 'Week 2', hours: 10.2, questions: 102 },
+  //   { name: 'Week 3', hours: 12.5, questions: 125 },
+  //   { name: 'Week 4', hours: 9.8, questions: 98 },
+  // ];
 
   const subjectData = [
     { name: 'ML', hours: 8.5, progress: 75 },

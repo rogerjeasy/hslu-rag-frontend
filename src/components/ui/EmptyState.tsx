@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react';
 export default function EmptyState({ 
   subject, 
   onStartConversation,
-  isMobile = false
+  // isMobile = false
 }: EmptyStateProps) {
   const [mounted, setMounted] = useState(false);
   

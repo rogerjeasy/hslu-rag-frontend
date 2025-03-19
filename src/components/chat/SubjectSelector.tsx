@@ -9,7 +9,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { SubjectSelectorProps, Subject } from '@/types/chat';
+import { SubjectSelectorProps } from '@/types/chat';
 
 export default function SubjectSelector({ 
   selectedSubject, 

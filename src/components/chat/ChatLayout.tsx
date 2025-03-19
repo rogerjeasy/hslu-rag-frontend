@@ -9,6 +9,10 @@ interface ChatLayoutProps {
 
 export default function ChatLayout({ children }: ChatLayoutProps) {
   const isDesktop = useMediaQuery('(min-width: 1024px)');
+
+  if (!isDesktop) {
+    return <div className="flex h-screen bg-background">{children}</div>;
+  }
   
   return (
     <div className="flex h-screen bg-background">

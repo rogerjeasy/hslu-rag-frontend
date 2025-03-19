@@ -2,6 +2,28 @@
  * Type definitions related to authentication
  */
 
+export interface User {
+    id: string;
+    name: string;
+    email: string;
+    studentId?: string;
+    program?: string;
+    token?: string;
+  }
+  
+  export interface AuthContextType {
+    user: User | null;
+    loading: boolean;
+    login: (email: string, password: string) => Promise<void>;
+    logout: () => void;
+    token?: string; // Add token as an optional property
+  }
+  
+export interface AuthProviderProps {
+  children: React.ReactNode;
+  }
+
+
 export interface UserCredentials {
     email: string;
     password: string;
