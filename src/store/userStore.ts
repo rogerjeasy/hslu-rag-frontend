@@ -127,7 +127,7 @@ export const useUserStore = create<UserState>()((set, get) => ({
   logout: async () => {
     try {
       set({ loading: false, hasChecked: true });
-      await api.patch('/users/logout');
+      await api.patch('/auth/logout');
       
       // Clear authorization header
       delete api.defaults.headers.common['Authorization'];
