@@ -96,7 +96,7 @@ export const useUserStore = create<UserState>()((set, get) => ({
         });
       }
     } catch (error) {
-      // toast.error("Failed to check session. Please log in again.");
+      console.log("Failed to check session. Please log in again."+ error);
       localStorage.removeItem('token');
       set({
         user: null,
