@@ -155,6 +155,27 @@ export function MainNav() {
             </NavigationMenuLink>
           </Link>
         </NavigationMenuItem>
+
+        <NavigationMenuItem>
+          <Link href="/about-us" passHref legacyBehavior>
+            <NavigationMenuLink 
+              className={cn(
+                navigationMenuTriggerStyle(),
+                "bg-transparent transition-all duration-200 hover:bg-accent/50",
+                pathname === "/about" && "bg-accent/40 text-accent-foreground font-medium"
+              )}
+            >
+              <motion.div 
+                className="flex items-center"
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+              >
+                <LucideGraduationCap className="mr-2 h-4 w-4" />
+                About Us
+              </motion.div>
+            </NavigationMenuLink>
+          </Link>
+        </NavigationMenuItem>
       </NavigationMenuList>
     </NavigationMenu>
   )
