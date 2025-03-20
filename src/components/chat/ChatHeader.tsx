@@ -56,11 +56,10 @@ export default function ChatHeader({
         
         // Mock data - replace with actual API calls
         const mockSubjects: Subject[] = [
-          { id: '1', name: 'Mathematics', icon: '📐' },
-          { id: '2', name: 'Computer Science', icon: '💻' },
-          { id: '3', name: 'Physics', icon: '⚛️' },
-          { id: '4', name: 'Chemistry', icon: '🧪' },
-          { id: '5', name: 'Biology', icon: '🧬' }
+          { id: '1', name: 'Classical Statistics', icon: '📊' },
+          { id: '2', name: 'Design of Data Experiment', icon: '🧪' },
+          { id: '3', name: 'Python for Data Science', icon: '🐍' },
+          { id: '4', name: 'Discrete response, time series and panel data', icon: '📈' },
         ];
 
         const mockModels: AIModel[] = [
