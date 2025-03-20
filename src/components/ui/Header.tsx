@@ -17,9 +17,16 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { motion } from "framer-motion"
 import { LucideLogOut, LucideSettings, LucideUser } from "lucide-react"
+import { useUserStore } from "@/store/userStore" // Import Zustand store
 
 export function Header() {
   const [scrolled, setScrolled] = useState(false)
+  
+  // Get user state and logout function from Zustand store using individual selectors
+  // This approach prevents the infinite loop warning
+  const user = useUserStore(state => state.user)
+  const isAuthenticated = useUserStore(state => state.isAuthenticated)
+  const logout = useUserStore(state => state.logout)
   
   useEffect(() => {
     const handleScroll = () => {
@@ -29,6 +36,19 @@ export function Header() {
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
+
+  // Function to handle logout
+  const handleLogout = async () => {
+    await logout()
+  }
+
+  // Get user initials for avatar fallback
+  const getUserInitials = () => {
+    if (!user) return "US"
+    const firstInitial = user.firstName ? user.firstName.charAt(0).toUpperCase() : ""
+    const lastInitial = user.lastName ? user.lastName.charAt(0).toUpperCase() : ""
+    return firstInitial + lastInitial || "US"
+  }
 
   return (
     <motion.header 
@@ -69,52 +89,77 @@ export function Header() {
         <MainNav />
         
         <div className="flex items-center justify-end gap-x-4">
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="relative h-9 w-9 rounded-full overflow-hidden border border-muted">
-                  <Avatar className="h-9 w-9">
-                    <AvatarImage src="/placeholder-avatar.jpg" alt="User" />
-                    <AvatarFallback className="bg-primary text-primary-foreground text-sm font-medium">US</AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-64" align="end" forceMount>
-                <DropdownMenuLabel className="font-normal p-4 border-b">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-semibold text-foreground">Student Name</p>
-                    <p className="text-xs text-muted-foreground">
-                      student@hslu.ch
-                    </p>
+          {isAuthenticated && user ? (
+            // User is logged in - show avatar with dropdown
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="relative h-9 w-9 rounded-full overflow-hidden border border-muted">
+                    <Avatar className="h-9 w-9">
+                      <AvatarImage src={user.profilePicture || "/placeholder-avatar.jpg"} alt={user.firstName || "User"} />
+                      <AvatarFallback className="bg-primary text-primary-foreground text-sm font-medium">{getUserInitials()}</AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-64" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal p-4 border-b">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-semibold text-foreground">{user.firstName} {user.lastName}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {user.email}
+                      </p>
+                      {user.program && (
+                        <p className="text-xs text-muted-foreground">
+                          Program: {user.program}
+                        </p>
+                      )}
+                    </div>
+                  </DropdownMenuLabel>
+                  <div className="p-2">
+                    <DropdownMenuItem asChild className="flex items-center gap-2 cursor-pointer">
+                      <Link href="/profile" className="flex items-center gap-2 w-full">
+                        <LucideUser className="h-4 w-4" />
+                        <span>Profile</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild className="flex items-center gap-2 cursor-pointer">
+                      <Link href="/settings" className="flex items-center gap-2 w-full">
+                        <LucideSettings className="h-4 w-4" />
+                        <span>Settings</span>
+                      </Link>
+                    </DropdownMenuItem>
                   </div>
-                </DropdownMenuLabel>
-                <div className="p-2">
-                  <DropdownMenuItem asChild className="flex items-center gap-2 cursor-pointer">
-                    <Link href="/profile" className="flex items-center gap-2 w-full">
-                      <LucideUser className="h-4 w-4" />
-                      <span>Profile</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild className="flex items-center gap-2 cursor-pointer">
-                    <Link href="/settings" className="flex items-center gap-2 w-full">
-                      <LucideSettings className="h-4 w-4" />
-                      <span>Settings</span>
-                    </Link>
-                  </DropdownMenuItem>
-                </div>
-                <DropdownMenuSeparator />
-                <div className="p-2">
-                  <DropdownMenuItem className="flex items-center gap-2 cursor-pointer text-red-500 focus:text-red-500">
-                    <LucideLogOut className="h-4 w-4" />
-                    <span>Log out</span>
-                  </DropdownMenuItem>
-                </div>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </motion.div>
+                  <DropdownMenuSeparator />
+                  <div className="p-2">
+                    <DropdownMenuItem 
+                      className="flex items-center gap-2 cursor-pointer text-red-500 focus:text-red-500"
+                      onClick={handleLogout}
+                    >
+                      <LucideLogOut className="h-4 w-4" />
+                      <span>Log out</span>
+                    </DropdownMenuItem>
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </motion.div>
+          ) : (
+            // User is not logged in - show login and register buttons
+            <div className="flex items-center gap-x-3">
+              <Link href="/login">
+                <Button variant="ghost" size="sm" className="hover:bg-blue-50">
+                  Login
+                </Button>
+              </Link>
+              <Link href="/register">
+                <Button variant="default" size="sm" className="bg-primary hover:bg-primary/90">
+                  Register
+                </Button>
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </motion.header>

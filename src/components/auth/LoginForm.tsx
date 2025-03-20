@@ -11,8 +11,12 @@ import { LoginFormData, AuthFormErrors, FormField } from '@/types/auth'
 import { validateLoginForm, getFieldError, hasFieldError } from '@/utils/authValidation'
 import { useRouter } from 'next/navigation'
 import { api } from "@/helpers/api"
+import { useUserStore } from '@/store/userStore' // Import the Zustand store
 
 export function LoginForm(): JSX.Element {
+  // Get the setUser function from Zustand store
+  const setUser = useUserStore(state => state.setUser);
+  
   // Form state
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
@@ -83,8 +87,9 @@ export function LoginForm(): JSX.Element {
     
     try {
       const response = await api.post('/auth/login', formData);
-      localStorage.setItem('userDetails', JSON.stringify(response.data.user));
-      localStorage.setItem('token', response.data.access_token);
+      
+      // Use the Zustand store to set user and token
+      setUser(response.data.user, response.data.access_token);
       
       // Show success message before redirect
       setShowSuccessMessage(true);

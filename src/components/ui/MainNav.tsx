@@ -13,9 +13,10 @@ import {
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu"
-import { LucideBook, LucideMessageSquare, LucideLayoutDashboard, LucideGraduationCap } from "lucide-react"
+import { LucideMessageSquare, LucideLayoutDashboard, LucideHome, LucideHelpCircle, LucideStar, LucideBookOpen, LucideSchool } from "lucide-react"
 import { motion } from "framer-motion"
 import React from "react"
+import { useUserStore } from "@/store/userStore" // Import Zustand store
 
 const courses = [
   {
@@ -47,17 +48,21 @@ const courses = [
 export function MainNav() {
   const pathname = usePathname()
   const [activeItem, setActiveItem] = useState<string | null>(null)
+  
+  // Get authentication state from Zustand store
+  const isAuthenticated = useUserStore(state => state.isAuthenticated)
 
   return (
     <NavigationMenu className="hidden md:flex">
       <NavigationMenuList className="gap-1">
+        {/* Public navigation items - always visible */}
         <NavigationMenuItem>
-          <Link href="/dashboard" passHref legacyBehavior>
+          <Link href="/" passHref legacyBehavior>
             <NavigationMenuLink 
               className={cn(
                 navigationMenuTriggerStyle(),
                 "bg-transparent transition-all duration-200 hover:bg-accent/50",
-                pathname === "/dashboard" && "bg-accent/40 text-accent-foreground font-medium"
+                pathname === "/" && "bg-accent/40 text-accent-foreground font-medium"
               )}
             >
               <motion.div 
@@ -65,92 +70,8 @@ export function MainNav() {
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
               >
-                <LucideLayoutDashboard className="mr-2 h-4 w-4" />
-                Dashboard
-              </motion.div>
-            </NavigationMenuLink>
-          </Link>
-        </NavigationMenuItem>
-       
-        <NavigationMenuItem 
-          onMouseEnter={() => setActiveItem("courses")} 
-          onMouseLeave={() => setActiveItem(null)}
-        >
-          <NavigationMenuTrigger 
-            className={cn(
-              "bg-transparent transition-all duration-200 hover:bg-accent/50",
-              pathname.includes("/courses") && "bg-accent/40 text-accent-foreground font-medium",
-              activeItem === "courses" && "bg-accent/30"
-            )}
-          >
-            <motion.div 
-              className="flex items-center"
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-            >
-              <LucideBook className="mr-2 h-4 w-4" />
-              Courses
-            </motion.div>
-          </NavigationMenuTrigger>
-          <NavigationMenuContent>
-            <motion.ul 
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-              className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]"
-            >
-              {courses.map((course) => (
-                <ListItem
-                  key={course.title}
-                  title={course.title}
-                  href={course.href}
-                  icon={course.icon}
-                >
-                  {course.description}
-                </ListItem>
-              ))}
-            </motion.ul>
-          </NavigationMenuContent>
-        </NavigationMenuItem>
-       
-        <NavigationMenuItem>
-          <Link href="/chat" passHref legacyBehavior>
-            <NavigationMenuLink 
-              className={cn(
-                navigationMenuTriggerStyle(),
-                "bg-transparent transition-all duration-200 hover:bg-accent/50",
-                pathname === "/chat" && "bg-accent/40 text-accent-foreground font-medium"
-              )}
-            >
-              <motion.div 
-                className="flex items-center"
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-              >
-                <LucideMessageSquare className="mr-2 h-4 w-4" />
-                Chat Assistant
-              </motion.div>
-            </NavigationMenuLink>
-          </Link>
-        </NavigationMenuItem>
-       
-        <NavigationMenuItem>
-          <Link href="/practice" passHref legacyBehavior>
-            <NavigationMenuLink 
-              className={cn(
-                navigationMenuTriggerStyle(),
-                "bg-transparent transition-all duration-200 hover:bg-accent/50",
-                pathname === "/practice" && "bg-accent/40 text-accent-foreground font-medium"
-              )}
-            >
-              <motion.div 
-                className="flex items-center"
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-              >
-                <LucideGraduationCap className="mr-2 h-4 w-4" />
-                Practice
+                <LucideHome className="mr-2 h-4 w-4" />
+                Home
               </motion.div>
             </NavigationMenuLink>
           </Link>
@@ -162,7 +83,7 @@ export function MainNav() {
               className={cn(
                 navigationMenuTriggerStyle(),
                 "bg-transparent transition-all duration-200 hover:bg-accent/50",
-                pathname === "/about" && "bg-accent/40 text-accent-foreground font-medium"
+                pathname === "/about-us" && "bg-accent/40 text-accent-foreground font-medium"
               )}
             >
               <motion.div 
@@ -170,12 +91,144 @@ export function MainNav() {
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
               >
-                <LucideGraduationCap className="mr-2 h-4 w-4" />
+                <LucideHelpCircle className="mr-2 h-4 w-4" />
                 About Us
               </motion.div>
             </NavigationMenuLink>
           </Link>
         </NavigationMenuItem>
+
+        {/* Key Features */}
+        <NavigationMenuItem>
+          <Link href="/features" passHref legacyBehavior>
+            <NavigationMenuLink 
+              className={cn(
+                navigationMenuTriggerStyle(),
+                "bg-transparent transition-all duration-200 hover:bg-accent/50",
+                pathname === "/features" && "bg-accent/40 text-accent-foreground font-medium"
+              )}
+            >
+              <motion.div 
+                className="flex items-center"
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+              >
+                <LucideStar className="mr-2 h-4 w-4" />
+                Features
+              </motion.div>
+            </NavigationMenuLink>
+          </Link>
+        </NavigationMenuItem>
+       
+        {/* Items only visible to authenticated users */}
+        {isAuthenticated && (
+          <>
+            <NavigationMenuItem>
+              <Link href="/dashboard" passHref legacyBehavior>
+                <NavigationMenuLink 
+                  className={cn(
+                    navigationMenuTriggerStyle(),
+                    "bg-transparent transition-all duration-200 hover:bg-accent/50",
+                    pathname === "/dashboard" && "bg-accent/40 text-accent-foreground font-medium"
+                  )}
+                >
+                  <motion.div 
+                    className="flex items-center"
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    <LucideLayoutDashboard className="mr-2 h-4 w-4" />
+                    Dashboard
+                  </motion.div>
+                </NavigationMenuLink>
+              </Link>
+            </NavigationMenuItem>
+           
+            <NavigationMenuItem 
+              onMouseEnter={() => setActiveItem("courses")} 
+              onMouseLeave={() => setActiveItem(null)}
+            >
+              <NavigationMenuTrigger 
+                className={cn(
+                  "bg-transparent transition-all duration-200 hover:bg-accent/50",
+                  pathname.includes("/courses") && "bg-accent/40 text-accent-foreground font-medium",
+                  activeItem === "courses" && "bg-accent/30"
+                )}
+              >
+                <motion.div 
+                  className="flex items-center"
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  <LucideBookOpen className="mr-2 h-4 w-4" />
+                  Courses
+                </motion.div>
+              </NavigationMenuTrigger>
+              <NavigationMenuContent>
+                <motion.ul 
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]"
+                >
+                  {courses.map((course) => (
+                    <ListItem
+                      key={course.title}
+                      title={course.title}
+                      href={course.href}
+                      icon={course.icon}
+                    >
+                      {course.description}
+                    </ListItem>
+                  ))}
+                </motion.ul>
+              </NavigationMenuContent>
+            </NavigationMenuItem>
+           
+            <NavigationMenuItem>
+              <Link href="/chat" passHref legacyBehavior>
+                <NavigationMenuLink 
+                  className={cn(
+                    navigationMenuTriggerStyle(),
+                    "bg-transparent transition-all duration-200 hover:bg-accent/50",
+                    pathname === "/chat" && "bg-accent/40 text-accent-foreground font-medium"
+                  )}
+                >
+                  <motion.div 
+                    className="flex items-center"
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    <LucideMessageSquare className="mr-2 h-4 w-4" />
+                    Chat Assistant
+                  </motion.div>
+                </NavigationMenuLink>
+              </Link>
+            </NavigationMenuItem>
+           
+            <NavigationMenuItem>
+              <Link href="/practice" passHref legacyBehavior>
+                <NavigationMenuLink 
+                  className={cn(
+                    navigationMenuTriggerStyle(),
+                    "bg-transparent transition-all duration-200 hover:bg-accent/50",
+                    pathname === "/practice" && "bg-accent/40 text-accent-foreground font-medium"
+                  )}
+                >
+                  <motion.div 
+                    className="flex items-center"
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    <LucideSchool className="mr-2 h-4 w-4" />
+                    Practice
+                  </motion.div>
+                </NavigationMenuLink>
+              </Link>
+            </NavigationMenuItem>
+          </>
+        )}
       </NavigationMenuList>
     </NavigationMenu>
   )
