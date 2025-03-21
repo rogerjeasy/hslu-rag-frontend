@@ -21,7 +21,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { AdminView } from '@/app/application-management/page'
+import { AdminView } from './ApplicationManagementMainComponent'
 import { useUserStore } from '@/store/userStore'
 import { motion } from 'framer-motion'
 
