@@ -1,7 +1,6 @@
-// src/components/application-management/CourseManagement.tsx
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import { 
   Card, 
   CardContent, 
@@ -13,36 +12,33 @@ import {
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
 import { BookOpen, Plus, Search, Filter, Edit, ChevronDown, ChevronUp } from 'lucide-react'
-import { CourseProvider, useCourseContext, Course } from './courses/CourseContext'
+import { useCourseContext } from './courses/CourseContext'
+import { Course } from '@/types/course.types'
 import { CourseTable } from './courses/CourseTable'
 import { CourseForm } from './courses/CourseForm'
 import { CourseDeleteDialog } from './courses/CourseDeleteDialog'
 import { CourseSearchFilter } from './courses/CourseSearchFilter'
 import { useToast } from "@/components/ui/toast-provider"
 import { CourseSkeleton } from './courses/CourseSkeleton'
-// import type { z } from 'zod'
+import { courseService } from '@/services/course.service'
 
-// Create a wrapper component to access the CourseContext
-// This is needed because we can only use the context hook inside a component that's a child of the provider
+// Main component that uses the CourseProvider
 function CourseManagementContent() {
   const [isAddingCourse, setIsAddingCourse] = useState(false)
   const [isEditingCourse, setIsEditingCourse] = useState(false)
   const [courseToDelete, setCourseToDelete] = useState<string | null>(null)
   const [courseToEdit, setCourseToEdit] = useState<Course | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   
-  const { setSearchTerm, filteredCourses } = useCourseContext()
+  const { 
+    setSearchTerm, 
+    filteredCourses, 
+    isLoading,
+    refreshCourses
+  } = useCourseContext()
+  
   const { toast } = useToast()
-
-  // Simulate data loading
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false)
-    }, 1000)
-    
-    return () => clearTimeout(timer)
-  }, [])
 
   // Animation variants for the card
   const cardVariants = {
@@ -93,39 +89,55 @@ function CourseManagementContent() {
 
   const handleCourseSubmit = useCallback(async (courseData: CourseFormValues, isEdit: boolean) => {
     try {
-      setIsLoading(true)
+      setIsSubmitting(true)
       
-      // API call would go here
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      if (isEdit && courseToEdit) {
+        // Update existing course
+        await courseService.updateCourse(courseToEdit.id, courseData)
+        toast({
+          title: "Course updated",
+          description: `"${courseData.name}" has been updated successfully.`,
+        })
+      } else {
+        // Create new course
+        await courseService.createCourse(courseData)
+        toast({
+          title: "Course added",
+          description: `"${courseData.name}" has been added to the system.`,
+        })
+      }
       
+      // Refresh the course list
+      await refreshCourses()
+      
+      // Reset form state
       setIsAddingCourse(false)
       setIsEditingCourse(false)
       setCourseToEdit(null)
       
-      toast({
-        title: `Course ${isEdit ? 'updated' : 'added'} successfully`,
-        description: `"${courseData.name}" has been ${isEdit ? 'updated' : 'added'} to the system.`,
-      })
     } catch (error) {
       console.error('Course operation error:', error)
       toast({
         title: "Operation Failed",
-        description: "There was an error processing your request.",
+        description: error instanceof Error ? error.message : "There was an error processing your request.",
         variant: "destructive"
       })
     } finally {
-      setIsLoading(false)
+      setIsSubmitting(false)
     }
-  }, [toast])
+  }, [courseToEdit, refreshCourses, toast])
 
   const handleConfirmDelete = useCallback(async () => {
     if (!courseToDelete) return
     
     try {
-      setIsLoading(true)
+      setIsSubmitting(true)
       
-      // API call would go here
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // Delete the course using the service
+      await courseService.deleteCourse(courseToDelete)
+      
+      // Refresh the course list
+      await refreshCourses()
       
       setCourseToDelete(null)
       
@@ -137,13 +149,13 @@ function CourseManagementContent() {
       console.error('Course deletion error:', error)
       toast({
         title: "Deletion Failed",
-        description: "There was an error deleting the course.",
+        description: error instanceof Error ? error.message : "There was an error deleting the course.",
         variant: "destructive"
       })
     } finally {
-      setIsLoading(false)
+      setIsSubmitting(false)
     }
-  }, [courseToDelete, toast])
+  }, [courseToDelete, refreshCourses, toast])
 
   // Handle search input change
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -200,7 +212,7 @@ function CourseManagementContent() {
                 initialData={courseToEdit}
                 onSubmit={(data) => handleCourseSubmit(data, isEditingCourse)}
                 onCancel={isEditingCourse ? handleCancelEdit : handleCancelAdd}
-                isSubmitting={isLoading}
+                isSubmitting={isSubmitting}
               />
             </CardContent>
           </Card>
@@ -280,17 +292,14 @@ function CourseManagementContent() {
         open={!!courseToDelete} 
         onOpenChange={() => setCourseToDelete(null)}
         onConfirm={handleConfirmDelete}
-        isDeleting={isLoading}
+        isDeleting={isSubmitting}
       />
     </motion.div>
   )
 }
 
-// Main exported component that wraps the content with the provider
+// Main exported component that no longer wraps with CourseProvider
 export function CourseManagement() {
-  return (
-    <CourseProvider>
-      <CourseManagementContent />
-    </CourseProvider>
-  )
+  // CourseProvider is now assumed to be used at a higher level in the application
+  return <CourseManagementContent />
 }

@@ -23,7 +23,8 @@ import {
   ExternalLink 
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
-import { useCourseContext, Course } from './CourseContext'
+import { useCourseContext } from './CourseContext'
+import { Course } from '@/types/course.types'
 import {
   DropdownMenu,
   DropdownMenuContent,

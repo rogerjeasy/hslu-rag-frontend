@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { useLogout } from '@/store/userStore';
 
 interface SidebarProps {
   open: boolean;
@@ -186,6 +187,7 @@ function SidebarContent({
   toggleSubmenu: (title: string) => void,
   pathname: string
 }) {
+  const handleLogout = useLogout();
   return (
     <>
       {/* Sidebar Header - Only show on desktop when not mobile view */}
@@ -309,6 +311,7 @@ function SidebarContent({
             "w-full justify-start",
             open ? "px-3" : "px-0 justify-center"
           )}
+          onClick={handleLogout}
         >
           <LogOut className="h-5 w-5" />
           {open && <span className="ml-3">Logout</span>}

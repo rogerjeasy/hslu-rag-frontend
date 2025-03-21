@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { Loader2 } from 'lucide-react'
-import { Course } from './CourseContext'
+import { Course } from "@/types/course.types"
 
 // Define form schema with Zod for validation
 const courseFormSchema = z.object({
