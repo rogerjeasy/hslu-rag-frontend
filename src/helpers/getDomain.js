@@ -8,7 +8,8 @@ import { isProduction } from "./isProduction"
  */
 export const getDomain = () => {
   const prodUrl = "https://hslu-rag-backend.onrender.com/api"
-  const devUrl = "http://localhost:8000/api"
+  const devUrl = "http://127.0.0.1:8000/api"
+  
 
   return isProduction() ? prodUrl : devUrl
 }

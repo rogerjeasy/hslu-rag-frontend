@@ -1,8 +1,9 @@
 import { ReactNode } from 'react';
-import { AuthProvider } from '@/components/auth/AuthProvider';
 import { Header } from '@/components/ui/Header';
 import { Footer } from '@/components/footer/footer';
 import './globals.css';
+import AuthInitializer from '@/components/auth/AuthInitializer';
+import { ToastProvider } from '@/components/ui/toast-provider';
 
 export const metadata = {
   title: 'HSLU Data Science Exam Preparation',
@@ -13,11 +14,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body>
-        <AuthProvider>
-          <Header />
-          {children}
-          <Footer />
-        </AuthProvider>
+        <ToastProvider>
+          <AuthInitializer>
+            <Header />
+            {children}
+            <Footer />
+          </AuthInitializer>
+        </ToastProvider>
       </body>
     </html>
   );

@@ -90,11 +90,8 @@ export function RegisterForm(): JSX.Element {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     
-    // Use functional update to ensure we're working with the latest state
     setFormData(prev => ({ ...prev, [name]: value }));
     
-    // Clear the specific field error when user starts typing
-    // Also use functional update here for consistency
     if (hasFieldError(errors, name)) {
       setErrors(prev => prev.filter(error => error.field !== name));
     }
@@ -104,8 +101,6 @@ export function RegisterForm(): JSX.Element {
   const handleCheckboxChange = (checked: boolean) => {
     setFormData(prev => ({ ...prev, terms: checked }));
     
-    // Clear checkbox error when user checks it
-    // Also use functional update here
     if (checked && hasFieldError(errors, 'terms')) {
       setErrors(prev => prev.filter(error => error.field !== 'terms'));
     }
@@ -127,6 +122,7 @@ export function RegisterForm(): JSX.Element {
     
     try {
       // Make API call to register the user
+      console.log('Registering user:', formData);
       await api.post('/auth/register', formData);
       
       // Show success modal instead of redirecting immediately

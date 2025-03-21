@@ -13,7 +13,6 @@ import {
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu"
-import { LucideMessageSquare, LucideLayoutDashboard, LucideHome, LucideHelpCircle, LucideStar, LucideBookOpen, LucideSchool } from "lucide-react"
 import { motion } from "framer-motion"
 import React from "react"
 import { useUserStore } from "@/store/userStore" // Import Zustand store
@@ -49,56 +48,62 @@ export function MainNav() {
   const pathname = usePathname()
   const [activeItem, setActiveItem] = useState<string | null>(null)
   
-  // Get authentication state from Zustand store
+  // Get authentication state and user from Zustand store
   const isAuthenticated = useUserStore(state => state.isAuthenticated)
+  const user = useUserStore(state => state.user)
+  
+  // Check if user has admin role
+  const isAdmin = user?.role?.includes("admin") || false
 
   return (
     <NavigationMenu className="hidden md:flex">
       <NavigationMenuList className="gap-1">
-        {/* Public navigation items - always visible */}
-        <NavigationMenuItem>
-          <Link href="/" passHref legacyBehavior>
-            <NavigationMenuLink 
-              className={cn(
-                navigationMenuTriggerStyle(),
-                "bg-transparent transition-all duration-200 hover:bg-accent/50",
-                pathname === "/" && "bg-accent/40 text-accent-foreground font-medium"
-              )}
-            >
-              <motion.div 
-                className="flex items-center"
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-              >
-                <LucideHome className="mr-2 h-4 w-4" />
-                Home
-              </motion.div>
-            </NavigationMenuLink>
-          </Link>
-        </NavigationMenuItem>
+        {/* Public navigation items - only visible when not authenticated */}
+        {!isAuthenticated && (
+          <>
+            <NavigationMenuItem>
+              <Link href="/" passHref legacyBehavior>
+                <NavigationMenuLink 
+                  className={cn(
+                    navigationMenuTriggerStyle(),
+                    "bg-transparent transition-all duration-200 hover:bg-accent/50",
+                    pathname === "/" && "bg-accent/40 text-accent-foreground font-medium"
+                  )}
+                >
+                  <motion.div 
+                    className="flex items-center"
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    Home
+                  </motion.div>
+                </NavigationMenuLink>
+              </Link>
+            </NavigationMenuItem>
 
-        <NavigationMenuItem>
-          <Link href="/about-us" passHref legacyBehavior>
-            <NavigationMenuLink 
-              className={cn(
-                navigationMenuTriggerStyle(),
-                "bg-transparent transition-all duration-200 hover:bg-accent/50",
-                pathname === "/about-us" && "bg-accent/40 text-accent-foreground font-medium"
-              )}
-            >
-              <motion.div 
-                className="flex items-center"
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-              >
-                <LucideHelpCircle className="mr-2 h-4 w-4" />
-                About Us
-              </motion.div>
-            </NavigationMenuLink>
-          </Link>
-        </NavigationMenuItem>
+            <NavigationMenuItem>
+              <Link href="/about-us" passHref legacyBehavior>
+                <NavigationMenuLink 
+                  className={cn(
+                    navigationMenuTriggerStyle(),
+                    "bg-transparent transition-all duration-200 hover:bg-accent/50",
+                    pathname === "/about-us" && "bg-accent/40 text-accent-foreground font-medium"
+                  )}
+                >
+                  <motion.div 
+                    className="flex items-center"
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    About Us
+                  </motion.div>
+                </NavigationMenuLink>
+              </Link>
+            </NavigationMenuItem>
+          </>
+        )}
 
-        {/* Key Features */}
+        {/* Features - visible to all */}
         <NavigationMenuItem>
           <Link href="/features" passHref legacyBehavior>
             <NavigationMenuLink 
@@ -113,7 +118,6 @@ export function MainNav() {
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
               >
-                <LucideStar className="mr-2 h-4 w-4" />
                 Features
               </motion.div>
             </NavigationMenuLink>
@@ -137,7 +141,6 @@ export function MainNav() {
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.97 }}
                   >
-                    <LucideLayoutDashboard className="mr-2 h-4 w-4" />
                     Dashboard
                   </motion.div>
                 </NavigationMenuLink>
@@ -160,7 +163,6 @@ export function MainNav() {
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.97 }}
                 >
-                  <LucideBookOpen className="mr-2 h-4 w-4" />
                   Courses
                 </motion.div>
               </NavigationMenuTrigger>
@@ -200,7 +202,6 @@ export function MainNav() {
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.97 }}
                   >
-                    <LucideMessageSquare className="mr-2 h-4 w-4" />
                     Chat Assistant
                   </motion.div>
                 </NavigationMenuLink>
@@ -221,12 +222,34 @@ export function MainNav() {
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.97 }}
                   >
-                    <LucideSchool className="mr-2 h-4 w-4" />
                     Practice
                   </motion.div>
                 </NavigationMenuLink>
               </Link>
             </NavigationMenuItem>
+            
+            {/* Admin-only navigation item */}
+            {isAdmin && (
+              <NavigationMenuItem>
+                <Link href="/application-management" passHref legacyBehavior>
+                  <NavigationMenuLink 
+                    className={cn(
+                      navigationMenuTriggerStyle(),
+                      "bg-transparent transition-all duration-200 hover:bg-accent/50",
+                      pathname === "/application-management" && "bg-accent/40 text-accent-foreground font-medium"
+                    )}
+                  >
+                    <motion.div 
+                      className="flex items-center"
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                    >
+                      Application Management
+                    </motion.div>
+                  </NavigationMenuLink>
+                </Link>
+              </NavigationMenuItem>
+            )}
           </>
         )}
       </NavigationMenuList>

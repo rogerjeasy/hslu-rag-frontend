@@ -38,7 +38,7 @@ interface UserState {
   loading: boolean;
   token: string | null;
   setUser: (user: User, token: string) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
   checkSession: () => Promise<void>;
 }
 
@@ -48,7 +48,6 @@ export const useUserStore = create<UserState>()((set, get) => ({
   loading: false,
   token: null,
   hasChecked: false,
-
 
   checkSession: async () => {
     const storedToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -66,10 +65,10 @@ export const useUserStore = create<UserState>()((set, get) => ({
       set({ loading: true });
       const response = await api.get("/token/verify", {
         withCredentials: true,
-            headers: {
-                'Accept': 'application/json',
-                'Authorization': `Bearer ${storedToken || get().token}`
-            }
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${storedToken || get().token}`
+        }
       });
       if (response.status === 200 && response.data.user) {
         set({
@@ -81,11 +80,13 @@ export const useUserStore = create<UserState>()((set, get) => ({
         });
         if (typeof window !== 'undefined') {
           localStorage.setItem('token', response.data.token);
+          localStorage.setItem('user', JSON.stringify(response.data.user));
         }
         api.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
       } else {
         if (typeof window !== 'undefined') {
           localStorage.removeItem('token');
+          localStorage.removeItem('user');
         }
         set({
           user: null,
@@ -97,7 +98,10 @@ export const useUserStore = create<UserState>()((set, get) => ({
       }
     } catch (error) {
       console.log("Failed to check session. Please log in again."+ error);
-      localStorage.removeItem('token');
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
       set({
         user: null,
         token: null,
@@ -112,6 +116,7 @@ export const useUserStore = create<UserState>()((set, get) => ({
     if (token) {
       if (typeof window !== 'undefined') {
         localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(user));
       }
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     }
@@ -127,11 +132,15 @@ export const useUserStore = create<UserState>()((set, get) => ({
   logout: async () => {
     try {
       set({ loading: false, hasChecked: true });
-      await api.patch('/auth/logout');
+      await api.post('/auth/logout');
       
       // Clear authorization header
       delete api.defaults.headers.common['Authorization'];
-      localStorage.removeItem('token');
+      
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
       
       // Reset store state
       set({
@@ -139,17 +148,21 @@ export const useUserStore = create<UserState>()((set, get) => ({
         isAuthenticated: false,
         loading: false,
         token: null,
-        hasChecked: false
+        hasChecked: true
       });
+      // Navigation will be handled in the component that calls this function
     } catch (error) {
       console.error('Logout failed:', error);
-      localStorage.removeItem('token');
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
       set({
         user: null,
         isAuthenticated: false,
         loading: false,
         token: null,
-        hasChecked: false
+        hasChecked: true
       });
     }
   },
@@ -157,31 +170,58 @@ export const useUserStore = create<UserState>()((set, get) => ({
 
 // Custom hook for protected routes
 export function useAuth() {
-  const { user, isAuthenticated, loading } = useUserStore();
+  const { user, isAuthenticated, loading, hasChecked } = useUserStore();
   const router = useRouter();
+  const checkSession = useUserStore(state => state.checkSession);
 
   useEffect(() => {
-    if (!loading && (!user || !isAuthenticated)) {
+    if (!hasChecked) {
+      checkSession();
+    } else if (!loading && (!user || !isAuthenticated)) {
       router.push("/login");
     }
-  }, [user, isAuthenticated, loading, router]);
+  }, [user, isAuthenticated, loading, hasChecked, router, checkSession]);
 
   return { user, isAuthenticated, loading };
 }
 
+// Custom hook to handle logout with navigation
+export function useLogout() {
+  const logout = useUserStore(state => state.logout);
+  const router = useRouter();
+
+  return async () => {
+    await logout();
+    router.push('/');
+  };
+}
+
+// Hook to initialize auth state from localStorage on app start
 export function useInitializeAuth() {
+  const setUser = useUserStore(state => state.setUser);
+  const checkSession = useUserStore(state => state.checkSession);
+  const hasChecked = useUserStore(state => state.hasChecked);
+
   useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-    if (storedToken && storedUser) {
-      try {
-        const user = JSON.parse(storedUser) as User;
-        useUserStore.getState().setUser(user, storedToken);
-      } catch (error) {
-        console.error('Failed to parse stored user data:', error);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+    if (!hasChecked) {
+      const storedToken = localStorage.getItem('token');
+      const storedUserStr = localStorage.getItem('user');
+      
+      if (storedToken && storedUserStr) {
+        try {
+          const storedUser = JSON.parse(storedUserStr) as User;
+          setUser(storedUser, storedToken);
+        } catch (error) {
+          console.error('Failed to parse stored user data:', error);
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          // Fall back to API check if local storage data is invalid
+          checkSession();
+        }
+      } else {
+        // No local data found, check with API
+        checkSession();
       }
     }
-  }, []);
+  }, [setUser, checkSession, hasChecked]);
 }

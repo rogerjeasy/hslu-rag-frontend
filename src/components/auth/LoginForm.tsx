@@ -1,6 +1,6 @@
 'use client'
 
-import { JSX, useState } from 'react'
+import { JSX, useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { AuthFormField } from '@/components/ui/auth/AuthFormField'
@@ -16,7 +16,17 @@ import { useUserStore } from '@/store/userStore' // Import the Zustand store
 export function LoginForm(): JSX.Element {
   // Get the setUser function from Zustand store
   const setUser = useUserStore(state => state.setUser);
-  
+  const hasChecked = useUserStore(state => state.hasChecked);
+  const isAuthenticated = useUserStore(state => state.isAuthenticated);
+  const router = useRouter();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (hasChecked && isAuthenticated) {
+      router.push('/dashboard');
+    }
+  }, [hasChecked, isAuthenticated, router]);
+    
   // Form state
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
@@ -30,7 +40,6 @@ export function LoginForm(): JSX.Element {
   // Loading state
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
-  const router = useRouter();
 
   // Form field definitions
   const fields: FormField[] = [
@@ -88,16 +97,22 @@ export function LoginForm(): JSX.Element {
     try {
       const response = await api.post('/auth/login', formData);
       
-      // Use the Zustand store to set user and token
-      setUser(response.data.user, response.data.access_token);
-      
-      // Show success message before redirect
-      setShowSuccessMessage(true);
-      
-      // Redirect after a short delay to show success animation
-      setTimeout(() => {
+      if (response.data && response.data.user && response.data.access_token) {
+        // Use the Zustand store to set user and token
+        // This will also save the user data and token to localStorage
+        setUser(response.data.user, response.data.access_token);
+        
+        // Update API headers for future requests
+        api.defaults.headers.common['Authorization'] = `Bearer ${response.data.access_token}`;
+        
+        // Show success message before redirect
+        setShowSuccessMessage(true);
+        
         router.push('/dashboard');
-      }, 1000);
+      
+      } else {
+        throw new Error('Invalid response format');
+      }
     } catch (error) {
       console.error('Login error:', error);
       setErrors([{ field: 'email', message: 'Invalid email or password' }]);

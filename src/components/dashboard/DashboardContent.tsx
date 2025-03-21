@@ -1,6 +1,7 @@
 // src/components/dashboard/DashboardContent.tsx
 "use client";
 
+import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { BookOpen, Clock, FileQuestion, GraduationCap, TrendingUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,6 +13,8 @@ import CourseCards from './CourseCards';
 import StudyProgress from './StudyProgress';
 import UpcomingExams from './UpcomingExams';
 import QuickAccess from './QuickAccess';
+import { useRouter } from 'next/navigation';
+import { useUserStore } from '@/store/userStore';
 
 // Animation variants for staggered animations
 const containerVariants = {
@@ -30,6 +33,39 @@ const itemVariants = {
 };
 
 export default function DashboardContent() {
+  const user = useUserStore(state => state.user);
+  const isAuthenticated = useUserStore(state => state.isAuthenticated);
+  const hasChecked = useUserStore(state => state.hasChecked);
+  const router = useRouter();
+  
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (hasChecked && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [hasChecked, isAuthenticated, router]);
+
+  // Handle loading state while checking authentication
+  if (!hasChecked) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  // If authenticated but no user data available yet, show loading state
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  // Get user's first name for display
+  const firstName = user.firstName || user.email || 'Student';
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -38,7 +74,7 @@ export default function DashboardContent() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <h1 className="text-3xl font-bold tracking-tight">Welcome back, Martin!</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Welcome back, {firstName}!</h1>
           <p className="text-muted-foreground">
             Continue your studies where you left off
           </p>

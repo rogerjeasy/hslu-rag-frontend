@@ -30,7 +30,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { VisuallyHidden } from "@/components/ui/visually-hidden"
-import { useUserStore } from "@/store/userStore" // Import Zustand store
+import { useUserStore, useLogout } from "@/store/userStore" // Import Zustand store and useLogout hook
 
 export function MobileNav() {
   const [open, setOpen] = useState(false)
@@ -39,11 +39,16 @@ export function MobileNav() {
   // Get user state from Zustand store
   const user = useUserStore(state => state.user)
   const isAuthenticated = useUserStore(state => state.isAuthenticated)
-  const logout = useUserStore(state => state.logout)
   
-  // Function to handle logout
-  const handleLogout = async () => {
-    await logout()
+  // Use the useLogout hook instead of directly accessing logout
+  const handleLogout = useLogout()
+  
+  // Check if user has admin role
+  const isAdmin = user?.role?.includes("admin") || false
+  
+  // Function to handle logout and close mobile menu
+  const onLogout = async () => {
+    await handleLogout()
     setOpen(false) // Close the mobile menu after logout
   }
   
@@ -105,9 +110,19 @@ export function MobileNav() {
     },
   ]
   
-  // Active routes based on authentication status
+  // Admin-only routes
+  const adminRoutes = isAdmin ? [
+    {
+      href: "/application-management",
+      label: "Application Management",
+      icon: Settings,
+      active: pathname === "/application-management",
+    }
+  ] : []
+  
+  // Active routes based on authentication status and admin role
   const routes = isAuthenticated 
-    ? [...publicRoutes, ...authenticatedRoutes]
+    ? [...publicRoutes, ...authenticatedRoutes, ...adminRoutes]
     : publicRoutes
  
   return (
@@ -153,6 +168,9 @@ export function MobileNav() {
                 <p className="text-sm text-muted-foreground">{user.email}</p>
                 {user.program && (
                   <p className="text-xs text-muted-foreground mt-1">Program: {user.program}</p>
+                )}
+                {isAdmin && (
+                  <p className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full mt-2 inline-block">Admin</p>
                 )}
               </div>
             </div>
@@ -231,7 +249,7 @@ export function MobileNav() {
                   Settings
                 </Link>
                 <button
-                  onClick={handleLogout}
+                  onClick={onLogout}
                   className="w-full flex items-center rounded-md px-3 py-2.5 text-sm font-medium transition-all hover:bg-red-100 text-red-600 hover:text-red-700"
                   aria-label="Log out from your account"
                 >

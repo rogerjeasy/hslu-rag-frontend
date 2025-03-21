@@ -17,16 +17,17 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { motion } from "framer-motion"
 import { LucideLogOut, LucideSettings, LucideUser } from "lucide-react"
-import { useUserStore } from "@/store/userStore" // Import Zustand store
+import { useUserStore, useLogout } from "@/store/userStore" // Import Zustand store and useLogout hook
 
 export function Header() {
   const [scrolled, setScrolled] = useState(false)
   
-  // Get user state and logout function from Zustand store using individual selectors
-  // This approach prevents the infinite loop warning
+  // Get user state from Zustand store using individual selectors
   const user = useUserStore(state => state.user)
   const isAuthenticated = useUserStore(state => state.isAuthenticated)
-  const logout = useUserStore(state => state.logout)
+  
+  // Use the new useLogout hook that handles both logout and navigation
+  const handleLogout = useLogout()
   
   useEffect(() => {
     const handleScroll = () => {
@@ -36,11 +37,6 @@ export function Header() {
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
-
-  // Function to handle logout
-  const handleLogout = async () => {
-    await logout()
-  }
 
   // Get user initials for avatar fallback
   const getUserInitials = () => {
