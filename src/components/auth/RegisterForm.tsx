@@ -11,7 +11,7 @@ import { ModalRegistrationSuccessful } from '@/components/ui/auth/ModalRegistrat
 import { RegisterFormData, AuthFormErrors, FormField } from '@/types/auth'
 import { validateRegisterForm, getFieldError, hasFieldError } from '@/utils/authValidation'
 import Link from 'next/link'
-import { api } from "@/helpers/api";
+import { api, handleError } from "@/helpers/api";
 
 export function RegisterForm(): JSX.Element {
   // Form state
@@ -117,18 +117,15 @@ export function RegisterForm(): JSX.Element {
       return;
     }
     
-    // Show loading state
     setIsLoading(true);
     
     try {
-      // Make API call to register the user
-      console.log('Registering user:', formData);
       await api.post('/auth/register', formData);
       
-      // Show success modal instead of redirecting immediately
       setShowSuccessModal(true);
     } catch (error) {
-      console.error('Registration error:', error);
+      const errorMessages = handleError(error);
+      console.error('Registration error:', errorMessages);
       setErrors([{ field: 'email', message: 'This email is already in use' }]);
     } finally {
       setIsLoading(false);

@@ -91,21 +91,18 @@ export function LoginForm(): JSX.Element {
       return;
     }
     
-    // Show loading state
     setIsLoading(true);
     
     try {
       const response = await api.post('/auth/login', formData);
       
-      if (response.data && response.data.user && response.data.access_token) {
-        // Use the Zustand store to set user and token
-        // This will also save the user data and token to localStorage
-        setUser(response.data.user, response.data.access_token);
+      if (response.data && response.data.user && response.data.accessToken) {
+
+        setUser(response.data.user, response.data.accessToken);
         
         // Update API headers for future requests
-        api.defaults.headers.common['Authorization'] = `Bearer ${response.data.access_token}`;
+        api.defaults.headers.common['Authorization'] = `Bearer ${response.data.accessToken}`;
         
-        // Show success message before redirect
         setShowSuccessMessage(true);
         
         router.push('/dashboard');
