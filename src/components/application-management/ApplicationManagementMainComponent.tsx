@@ -1,7 +1,6 @@
-// src/app/application-management/ApplicationManagementMainComponent.tsx
 "use client";
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { AppManagementLayout } from '@/components/application-management/AppManagementLayout'
 import { UserManagement } from '@/components/application-management/UserManagement'
 import { FaqManagement } from '@/components/application-management/FaqManagement'
@@ -9,13 +8,7 @@ import { FileManagement } from '@/components/application-management/FileManageme
 import { CourseManagement } from '@/components/application-management/CourseManagement'
 import { DashboardOverview } from '@/components/application-management/DashboardOverview'
 import { useUserStore } from '@/store/userStore'
-import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
-
-// export const metadata: Metadata = {
-//     title: 'Application Management | HSLU Data Science Exam Preparation',
-//     description: 'Manage users, courses, FAQs, and files for the HSLU Data Science Exam Preparation Assistant',
-// }
+import { useRouter, usePathname } from 'next/navigation'
 
 export type AdminView = 'dashboard' | 'users' | 'courses' | 'faq' | 'files'
 
@@ -23,6 +16,20 @@ export default function ApplicationManagementPage() {
   const [currentView, setCurrentView] = useState<AdminView>('dashboard')
   const { user, isAuthenticated, hasChecked } = useUserStore()
   const router = useRouter()
+  const pathname = usePathname()
+  
+  // Parse the current path to set the initial view
+  useEffect(() => {
+    if (pathname) {
+      // Extract the section from the URL path
+      const section = pathname.split('/').pop() as AdminView | undefined
+      
+      // If it's a valid section, set it as the current view
+      if (section && ['dashboard', 'users', 'courses', 'faq', 'files'].includes(section)) {
+        setCurrentView(section)
+      }
+    }
+  }, [pathname])
   
   // Check if user is authenticated and has admin role
   useEffect(() => {
@@ -30,7 +37,15 @@ export default function ApplicationManagementPage() {
       router.push('/dashboard')
     }
   }, [hasChecked, isAuthenticated, user, router])
-
+  
+  // Update URL when view changes
+  useEffect(() => {
+    if (currentView) {
+      // Update the URL without forcing a page reload
+      router.push(`/application-management/${currentView}`, { scroll: false })
+    }
+  }, [currentView, router])
+  
   // Show loading state while checking authentication
   if (!hasChecked || !isAuthenticated || !user) {
     return (
@@ -39,7 +54,7 @@ export default function ApplicationManagementPage() {
       </div>
     )
   }
-
+  
   // Render appropriate view based on selection
   const renderView = () => {
     switch (currentView) {
@@ -57,10 +72,10 @@ export default function ApplicationManagementPage() {
         return <DashboardOverview />
     }
   }
-
+  
   return (
-    <AppManagementLayout 
-      currentView={currentView} 
+    <AppManagementLayout
+      currentView={currentView}
       setCurrentView={setCurrentView}
     >
       {renderView()}

@@ -231,12 +231,12 @@ export function MainNav() {
             {/* Admin-only navigation item */}
             {isAdmin && (
               <NavigationMenuItem>
-                <Link href="/application-management" passHref legacyBehavior>
+                <Link href="/application-management/dashboard" passHref legacyBehavior>
                   <NavigationMenuLink 
                     className={cn(
                       navigationMenuTriggerStyle(),
                       "bg-transparent transition-all duration-200 hover:bg-accent/50",
-                      pathname === "/application-management" && "bg-accent/40 text-accent-foreground font-medium"
+                      pathname === "/application-management/dashboard" && "bg-accent/40 text-accent-foreground font-medium"
                     )}
                   >
                     <motion.div 

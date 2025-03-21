@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { 
   Card, 
   CardContent, 
@@ -21,6 +21,7 @@ import { CourseSearchFilter } from './courses/CourseSearchFilter'
 import { useToast } from "@/components/ui/toast-provider"
 import { CourseSkeleton } from './courses/CourseSkeleton'
 import { courseService } from '@/services/course.service'
+import { CourseProvider } from './courses/CourseProvider'
 
 // Main component that uses the CourseProvider
 function CourseManagementContent() {
@@ -35,10 +36,16 @@ function CourseManagementContent() {
     setSearchTerm, 
     filteredCourses, 
     isLoading,
-    refreshCourses
+    refreshCourses,
+    error
   } = useCourseContext()
   
   const { toast } = useToast()
+
+  // Ensure courses are loaded when component mounts
+  useEffect(() => {
+    refreshCourses()
+  }, [refreshCourses])
 
   // Animation variants for the card
   const cardVariants = {
@@ -162,6 +169,24 @@ function CourseManagementContent() {
     setSearchTerm(e.target.value)
   }, [setSearchTerm])
 
+  // Error state component
+  const ErrorState = () => (
+    <div className="flex flex-col items-center justify-center py-10 text-center">
+      <div className="rounded-full bg-red-100 p-6 mb-4">
+        <svg className="h-12 w-12 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+      </div>
+      <h3 className="text-xl font-semibold tracking-tight mb-2">Something went wrong</h3>
+      <p className="text-muted-foreground max-w-md mb-6">
+        {error || "We couldn't load your courses. Please try again later."}
+      </p>
+      <Button onClick={() => refreshCourses()}>
+        Try Again
+      </Button>
+    </div>
+  )
+
   return (
     <motion.div
       className="space-y-6"
@@ -272,18 +297,23 @@ function CourseManagementContent() {
               
               {isLoading ? (
                 <CourseSkeleton />
+              ) : error ? (
+                <ErrorState />
               ) : (
                 <CourseTable 
                   onEdit={handleEditCourse}
                   onDelete={handleDeleteCourse}
+                  onAddCourse={handleAddCourse}
                 />
               )}
             </CardContent>
             
-            <CardFooter className="flex justify-between border-t p-4 text-sm text-muted-foreground">
-              <div>Showing courses that students can access via the RAG system</div>
-              <div>Total: {filteredCourses.length} courses</div>
-            </CardFooter>
+            {!isLoading && !error && filteredCourses.length > 0 && (
+              <CardFooter className="flex flex-col sm:flex-row justify-between border-t p-4 text-sm text-muted-foreground">
+                <div>Showing courses that students can access via the RAG system</div>
+                <div>Total: {filteredCourses.length} courses</div>
+              </CardFooter>
+            )}
           </Card>
         </motion.div>
       )}
@@ -298,8 +328,11 @@ function CourseManagementContent() {
   )
 }
 
-// Main exported component that no longer wraps with CourseProvider
+// Main exported component that wraps with CourseProvider
 export function CourseManagement() {
-  // CourseProvider is now assumed to be used at a higher level in the application
-  return <CourseManagementContent />
+  return (
+    <CourseProvider>
+      <CourseManagementContent />
+    </CourseProvider>
+  )
 }

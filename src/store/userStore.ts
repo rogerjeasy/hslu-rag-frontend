@@ -12,23 +12,15 @@ export interface User {
   firstName: string;
   lastName: string;
   email: string;
-  phoneNumber: string;
   profilePicture: string;
   bio: string;
   role: string[];
   graduationYear: number;
   interests: string[];
-  lookingForMentor: boolean;
-  willingToMentor: boolean;
-  connectionsMade: number;
   accountCreatedAt: string;
   isActive: boolean;
-  isVerified: boolean;
   program: string;
-  phoneCode: string;
   languages: string[];
-  certifications: string[];
-  projects: string[];
 }
 
 interface UserState {
