@@ -131,7 +131,7 @@ export function HeroSection() {
           className="object-cover object-right-bottom opacity-15"
           priority
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-white/70 to-blue-50/70 backdrop-blur-[2px]"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-white/70 to-blue-50/70"></div>
       </div>
       
       {/* Animated background dots */}
@@ -164,7 +164,7 @@ export function HeroSection() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.6, delay: 0.4 }}
-              className="grid grid-cols-3 gap-4 bg-white/80 backdrop-blur rounded-xl p-4 shadow-sm border border-blue-50"
+              className="grid grid-cols-3 gap-4 bg-white/80 rounded-xl p-4 shadow-sm border border-blue-50"
             >
               {stats.map((stat, i) => (
                 <StatCounter 

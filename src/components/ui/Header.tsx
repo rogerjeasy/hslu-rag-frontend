@@ -2,6 +2,7 @@
 'use client'
 
 import { useState, useEffect } from "react"
+import './animations.css' // Import custom animations
 import Link from "next/link"
 import { MainNav } from "@/components/ui/MainNav"
 import { MobileNav } from "@/components/ui/MobileNav"
@@ -53,8 +54,8 @@ export function Header() {
       transition={{ duration: 0.3 }}
       className={`sticky top-0 z-50 w-full border-b backdrop-blur transition-all duration-200 ${
         scrolled 
-          ? "bg-blue-50/95 supports-[backdrop-filter]:bg-blue-50/80 shadow-sm" 
-          : "bg-white/90 supports-[backdrop-filter]:bg-white/70"
+          ? "bg-indigo-900/95 supports-[backdrop-filter]:bg-indigo-900/90 text-white shadow-md" 
+          : "bg-gradient-to-r from-indigo-700 to-blue-600 text-white supports-[backdrop-filter]:bg-opacity-90"
       }`}
     >
       {/* Added px-4 or px-6 to ensure spacing from edges */}
@@ -75,9 +76,11 @@ export function Header() {
               initial={{ opacity: 0, x: -5 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.1, duration: 0.3 }}
-              className="hidden sm:inline-block font-bold text-xl bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent"
+              className="hidden sm:inline-block font-bold text-xl relative"
             >
-              HSLU Data Science
+              <span className="animate-text-gradient bg-gradient-to-r from-pink-500 via-yellow-400 via-green-400 via-cyan-400 to-pink-500 bg-clip-text text-transparent bg-300% font-bold">
+                HSLU Data Science
+              </span>
             </motion.span>
           </Link>
         </div>
