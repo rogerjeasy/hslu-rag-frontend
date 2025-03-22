@@ -1,24 +1,23 @@
-// src/components/application-management/files/UploadConfirmationDialog.tsx
 'use client'
 
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle 
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { AlertCircle, FileCheck, FileText, Package, Code } from 'lucide-react'
+import { AlertCircle, FileCheck, FileText, Package } from 'lucide-react'
 import { useFileUpload } from './FileUploadContext'
 import { formatFileSize } from '@/lib/utils'
-import { JSX } from "react"
+import { MaterialUploadRequest } from "@/types/material.types"
 
 interface UploadConfirmationDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onConfirm: (files: File[], courseId: string) => void
+  onConfirm: (files: File[], uploadData: MaterialUploadRequest) => void
 }
 
 export function UploadConfirmationDialog({
@@ -26,116 +25,157 @@ export function UploadConfirmationDialog({
   onOpenChange,
   onConfirm
 }: UploadConfirmationDialogProps) {
-  const { files, selectedCourseId, selectedCourseName } = useFileUpload()
+  const { 
+    files, 
+    selectedCourseId, 
+    selectedCourseName,
+    materialType,
+    // materialTitle,
+    // materialDescription,
+    selectedModuleId,
+    selectedTopicId,
+    getUploadData
+  } = useFileUpload()
 
-  // Group files by type
+  // Group files by type for displaying in the confirmation
   const getFilesByType = () => {
-    const types: Record<string, { count: number, icon: JSX.Element, label: string }> = {}
+    const types: Record<string, { count: number, icon: React.ReactNode, label: string }> = {}
     
     files.forEach(file => {
       const extension = file.name.split('.').pop()?.toLowerCase() || 'unknown'
       
-      let type = 'other'
-      let icon = <FileText className="h-4 w-4 text-gray-500" />
-      let label = 'Other'
-      
-      if (['pdf', 'doc', 'docx', 'txt', 'md'].includes(extension)) {
-        type = 'document'
-        icon = <FileText className="h-4 w-4 text-blue-500" />
-        label = 'Document'
-      } else if (['ppt', 'pptx'].includes(extension)) {
-        type = 'presentation'
-        icon = <Package className="h-4 w-4 text-orange-500" />
-        label = 'Presentation'
-      } else if (['py', 'ipynb', 'r', 'js', 'ts', 'html', 'css', 'json'].includes(extension)) {
-        type = 'code'
-        icon = <Code className="h-4 w-4 text-green-500" />
-        label = 'Code'
+      if (!types[extension]) {
+        // Create entry for this file type with appropriate icon
+        let icon = <FileText className="h-4 w-4" />
+        let label = 'Documents'
+        
+        if (['pdf'].includes(extension)) {
+          icon = <FileText className="h-4 w-4" />
+          label = 'PDF Documents'
+        } else if (['ppt', 'pptx'].includes(extension)) {
+          icon = <Package className="h-4 w-4" />
+          label = 'Presentations'
+        } else if (['py', 'js', 'ipynb', 'r', 'java', 'ts', 'scala'].includes(extension)) {
+          icon = <FileCheck className="h-4 w-4" />
+          label = 'Code Files'
+        }
+        
+        types[extension] = {
+          count: 1,
+          icon,
+          label
+        }
+      } else {
+        // Increment count for this file type
+        types[extension].count++
       }
-      
-      if (!types[type]) {
-        types[type] = { count: 0, icon, label }
-      }
-      
-      types[type].count++
     })
     
     return Object.values(types)
   }
 
-  // Check if we can proceed with the upload
-  const canProceed = files.length > 0 && selectedCourseId !== ''
+  // Calculate total file size
+  const getTotalFileSize = () => {
+    return files.reduce((total, file) => total + file.size, 0)
+  }
 
-  // Calculate total size
-  const totalSize = files.reduce((size, file) => size + file.size, 0)
+  // Handle confirm button click
+  const handleConfirm = () => {
+    if (files.length === 0 || !selectedCourseId) {
+      return
+    }
+    
+    const uploadData = getUploadData()
+    onConfirm(files, uploadData)
+  }
+
+  // Check if we can enable the confirm button
+  const canConfirm = !!selectedCourseId && files.length > 0
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileCheck className="h-5 w-5" />
-            Confirm Upload
-          </DialogTitle>
+          <DialogTitle>Confirm Upload</DialogTitle>
           <DialogDescription>
-            Review the files before uploading to the RAG system
+            You are about to upload {files.length} file{files.length !== 1 ? 's' : ''} to the RAG system.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 my-2">
-          <div>
-            <p className="text-sm font-medium mb-1">Target Course</p>
-            <p className="text-sm">{selectedCourseName || "No course selected"}</p>
-          </div>
-          
-          <div>
-            <p className="text-sm font-medium mb-1">Files</p>
-            <p className="text-sm">{files.length} file{files.length !== 1 ? 's' : ''} ({formatFileSize(totalSize)})</p>
-            
-            <div className="mt-2 space-y-1.5">
-              {getFilesByType().map((type, index) => (
-                <div key={index} className="flex items-center gap-1.5 text-xs">
-                  {type.icon}
-                  <span>{type.count} {type.label}{type.count !== 1 ? 's' : ''}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          
-          {!canProceed && (
-            <div className="flex items-center gap-2 bg-amber-50 text-amber-600 p-3 rounded-md text-sm">
-              <AlertCircle className="h-5 w-5" />
-              <div>
-                <p className="font-medium">Cannot proceed</p>
-                <p className="text-xs">
-                  {!selectedCourseId && "Please select a course. "}
-                  {files.length === 0 && "Please add at least one file."}
-                </p>
+        <div className="space-y-4">
+          {/* Course destination */}
+          <div className="rounded-lg border p-3">
+            <h4 className="font-medium text-sm mb-2">Destination</h4>
+            <div className="flex items-start gap-3">
+              <Package className="h-5 w-5 text-primary mt-0.5" />
+              <div className="space-y-1">
+                <p className="font-medium">{selectedCourseName || 'No course selected'}</p>
+                {selectedModuleId && (
+                  <p className="text-sm text-muted-foreground">
+                    Module: {selectedModuleId}
+                  </p>
+                )}
+                {selectedTopicId && (
+                  <p className="text-sm text-muted-foreground">
+                    Topic: {selectedTopicId}
+                  </p>
+                )}
+                {materialType && (
+                  <p className="text-sm text-muted-foreground">
+                    Type: {materialType}
+                  </p>
+                )}
               </div>
             </div>
-          )}
+          </div>
 
-          <div className="bg-muted/50 p-3 rounded-md text-sm">
-            <p className="text-xs text-muted-foreground">
-              These files will be processed and indexed by the RAG system for
-              course-specific question answering, exam preparation, and
-              knowledge gap identification.
-            </p>
+          {/* File summary */}
+          <div className="rounded-lg border p-3">
+            <h4 className="font-medium text-sm mb-2">Files Summary</h4>
+            <ul className="space-y-2">
+              {getFilesByType().map((type, index) => (
+                <li key={index} className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    {type.icon}
+                    <span>{type.label}</span>
+                  </div>
+                  <span className="text-sm text-muted-foreground">{type.count} file{type.count !== 1 ? 's' : ''}</span>
+                </li>
+              ))}
+              <li className="flex justify-between items-center pt-2 border-t">
+                <span className="font-medium">Total Size</span>
+                <span className="text-sm">{formatFileSize(getTotalFileSize())}</span>
+              </li>
+            </ul>
+          </div>
+
+          {/* Warning about processing */}
+          <div className="flex gap-2 items-start text-sm rounded-lg bg-amber-50 p-3 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+            <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="font-medium">Processing information</p>
+              <p className="mt-1">
+                These files will be processed by the RAG system and may take some time depending on their size and complexity. 
+                You will be notified when processing is complete.
+              </p>
+            </div>
           </div>
         </div>
 
-        <DialogFooter className="sm:justify-between">
-          <Button
-            variant="outline"
+        <DialogFooter className="flex flex-col sm:flex-row sm:justify-between sm:space-x-2">
+          <Button 
+            variant="outline" 
             onClick={() => onOpenChange(false)}
+            className="mt-3 sm:mt-0"
           >
             Cancel
           </Button>
-          <Button
-            disabled={!canProceed}
-            onClick={() => onConfirm(files, selectedCourseId)}
+          <Button 
+            onClick={handleConfirm} 
+            disabled={!canConfirm}
+            className="mt-3 sm:mt-0"
           >
-            Upload Files
+            Upload {files.length} file{files.length !== 1 ? 's' : ''}
           </Button>
         </DialogFooter>
       </DialogContent>
