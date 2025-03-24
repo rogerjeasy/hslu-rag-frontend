@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { 
   Card, 
   CardContent, 
@@ -22,7 +22,8 @@ import { EmbeddingProgress } from './files/EmbeddingProgress'
 import { useToast } from "@/components/ui/toast-provider"
 import { MaterialMetadataForm } from './files/MaterialMetadataForm'
 import { useMaterialStore } from '@/store/materialStore'
-import { MaterialUploadRequest, MaterialUploadResponse } from '@/types/material.types'
+import { MaterialUploadRequest, MaterialUploadResponse, ProcessingStage as ApiProcessingStage } from '@/types/material.types'
+import { materialService } from '@/services/material.service'
 
 // Define the file progress type to match what we're using in ProcessingIndicator
 interface FileProgress {
@@ -31,8 +32,29 @@ interface FileProgress {
   status: 'pending' | 'uploading' | 'processing' | 'completed' | 'failed'
 }
 
-// Processing stages
-type ProcessingStage = 'idle' | 'uploading' | 'embedding' | 'complete'
+// Processing stages - UI view states
+type ProcessingStage = 'idle' | 'uploading' | 'text_processing' | 'embedding' | 'indexing' | 'complete'
+
+// Map backend processing stages to UI stages
+const mapApiStageToUiStage = (apiStage: ApiProcessingStage): ProcessingStage => {
+  switch (apiStage) {
+    case 'pending':
+    case 'upload_complete':
+      return 'uploading'
+    case 'text_extraction':
+    case 'chunking':
+      return 'text_processing'
+    case 'embedding':
+    case 'indexing':
+      return 'indexing'
+    case 'completed':
+      return 'complete'
+    case 'failed':
+      return 'idle' // Return to idle state on failure
+    default:
+      return 'uploading'
+  }
+}
 
 export function FileManagement() {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
@@ -43,14 +65,24 @@ export function FileManagement() {
   const [currentFileName, setCurrentFileName] = useState("")
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [uploadedMaterialIds, setUploadedMaterialIds] = useState<string[]>([])
+  const [batchId, setBatchId] = useState<string | null>(null)
+  
+  // Polling reference to keep track of and cleanup intervals
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const batchPollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  
+  // Use ref to track the last processing stage to prevent infinite loops
+  const lastProcessingStageRef = useRef<ProcessingStage>('idle')
+  
   const { toast } = useToast()
   
   // Get upload state and actions from the material store
   const {
     uploadProgress,
     uploadMultipleMaterials,
-    resetUploadState
-  } = useMaterialStore();
+    resetUploadState,
+    // getProcessingStatus
+  } = useMaterialStore()
 
   // Track file progress for each file
   const [fileProgresses, setFileProgresses] = useState<FileProgress[]>([])
@@ -68,6 +100,231 @@ export function FileManagement() {
     }
   }
 
+  // Function to poll batch status from server
+  const pollBatchStatus = useCallback(async () => {
+    if (!batchId) return
+    
+    try {
+      const batchStatus = await materialService.getBatchStatus(batchId)
+      
+      // Update UI based on batch status
+      if (batchStatus.status === 'completed' || batchStatus.status === 'completed_with_errors') {
+        // Batch is complete
+        if (lastProcessingStageRef.current !== 'complete') {
+          setProcessingStage('complete')
+          lastProcessingStageRef.current = 'complete'
+          
+          // Clear polling intervals
+          if (batchPollingIntervalRef.current) {
+            clearInterval(batchPollingIntervalRef.current)
+            batchPollingIntervalRef.current = null
+          }
+          
+          // Show completion UI briefly, then reset
+          setTimeout(() => {
+            resetUploadState()
+            setProcessingStage('idle')
+            lastProcessingStageRef.current = 'idle'
+            setFileProgresses([])
+            setUploadSuccess(false)
+            setUploadedMaterialIds([])
+            setBatchId(null)
+          }, 3000)
+        }
+        return
+      } else if (batchStatus.status === 'failed' || batchStatus.status === 'canceled') {
+        // Batch processing failed
+        toast({
+          title: "Processing Failed",
+          description: batchStatus.error_message || "Batch processing failed or was canceled",
+          variant: "destructive"
+        })
+        
+        // Clear polling intervals
+        if (batchPollingIntervalRef.current) {
+          clearInterval(batchPollingIntervalRef.current)
+          batchPollingIntervalRef.current = null
+        }
+        
+        // Reset to idle state
+        if (lastProcessingStageRef.current !== 'idle') {
+          setProcessingStage('idle')
+          lastProcessingStageRef.current = 'idle'
+        }
+        return
+      }
+      
+      // Update the stage based on batch current_stage
+      const currentApiStage = batchStatus.current_stage as ApiProcessingStage
+      const newProcessingStage = mapApiStageToUiStage(currentApiStage)
+      
+      // Only update if stage has changed
+      if (newProcessingStage !== lastProcessingStageRef.current) {
+        console.log(`Batch polling: Updating stage from ${lastProcessingStageRef.current} to ${newProcessingStage} (API stage: ${currentApiStage})`)
+        setProcessingStage(newProcessingStage)
+        lastProcessingStageRef.current = newProcessingStage
+      }
+      
+    } catch (error) {
+      console.error('Error polling batch status:', error)
+    }
+  }, [batchId, resetUploadState, toast])
+
+  // Function to poll individual processing statuses (used before we have a batch ID)
+  const pollProcessingStatuses = useCallback(async () => {
+    if (!uploadedMaterialIds.length) return
+    
+    try {
+      // Get status for all materials
+      const statuses = await Promise.all(
+        uploadedMaterialIds.map(id => materialService.getProcessingStatus(id))
+      )
+      
+      // Check if we have a batch ID from any of the materials
+      const materialWithBatchId = statuses.find(status => status.batch_id)
+      if (materialWithBatchId && !batchId && materialWithBatchId.batch_id) {
+        const newBatchId = materialWithBatchId.batch_id
+        setBatchId(newBatchId) 
+        
+        // Now that we have a batch ID, switch to batch polling
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current)
+          pollingIntervalRef.current = null
+        }
+        
+        // Start batch polling immediately
+        await pollBatchStatus()
+        batchPollingIntervalRef.current = setInterval(pollBatchStatus, 3000)
+        return
+      }
+      
+      // Calculate if all materials are completed
+      const allCompleted = statuses.every(status => status.status === 'completed')
+      const anyFailed = statuses.some(status => status.status === 'failed')
+      
+      if (allCompleted) {
+        // All materials completed processing
+        if (lastProcessingStageRef.current !== 'complete') {
+          setProcessingStage('complete')
+          lastProcessingStageRef.current = 'complete'
+          
+          // Clear polling interval
+          if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current)
+            pollingIntervalRef.current = null
+          }
+          
+          // Show completion UI briefly, then reset
+          setTimeout(() => {
+            resetUploadState()
+            setProcessingStage('idle')
+            lastProcessingStageRef.current = 'idle'
+            setFileProgresses([])
+            setUploadSuccess(false)
+            setUploadedMaterialIds([])
+          }, 3000)
+        }
+        return
+      } else if (anyFailed && statuses.every(status => status.status === 'failed')) {
+        // All materials failed
+        toast({
+          title: "Processing Failed",
+          description: "All materials failed processing. Please try again.",
+          variant: "destructive"
+        })
+        
+        // Clear polling interval
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current)
+          pollingIntervalRef.current = null
+        }
+        
+        // Reset to idle state
+        if (lastProcessingStageRef.current !== 'idle') {
+          setProcessingStage('idle')
+          lastProcessingStageRef.current = 'idle'
+        }
+        return
+      }
+      
+      // Determine the earliest stage any material is in (priority order)
+      const stagePriority: ApiProcessingStage[] = [
+        'pending',
+        'upload_complete', 
+        'text_extraction', 
+        'chunking', 
+        'embedding', 
+        'indexing', 
+        'completed'
+      ]
+      
+      let currentApiStage: ApiProcessingStage = 'completed'
+      
+      // Find the earliest stage
+      for (const stage of stagePriority) {
+        if (statuses.some(status => status.stage === stage)) {
+          currentApiStage = stage
+          break
+        }
+      }
+      
+      // Convert API stage to UI stage
+      const newProcessingStage = mapApiStageToUiStage(currentApiStage)
+      
+      // Only update if stage has changed
+      if (newProcessingStage !== lastProcessingStageRef.current) {
+        console.log(`Updating processing stage from ${lastProcessingStageRef.current} to ${newProcessingStage}`)
+        setProcessingStage(newProcessingStage)
+        lastProcessingStageRef.current = newProcessingStage
+      }
+    } catch (error) {
+      console.error('Error polling processing status:', error)
+    }
+  }, [uploadedMaterialIds, batchId, resetUploadState, toast, pollBatchStatus])
+
+  // Setup polling when uploadedMaterialIds changes
+  useEffect(() => {
+    // Clear any existing intervals
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current)
+      pollingIntervalRef.current = null
+    }
+    
+    if (batchPollingIntervalRef.current) {
+      clearInterval(batchPollingIntervalRef.current)
+      batchPollingIntervalRef.current = null
+    }
+    
+    // If we have uploaded materials and not in idle/complete state
+    if (uploadedMaterialIds.length > 0 && 
+        lastProcessingStageRef.current !== 'idle' && 
+        lastProcessingStageRef.current !== 'complete') {
+      
+      if (batchId) {
+        // Use batch polling if we have a batch ID
+        pollBatchStatus()
+        batchPollingIntervalRef.current = setInterval(pollBatchStatus, 3000)
+      } else {
+        // Otherwise poll individual materials
+        pollProcessingStatuses()
+        pollingIntervalRef.current = setInterval(pollProcessingStatuses, 3000)
+      }
+    }
+    
+    // Cleanup on unmount or when dependencies change
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current)
+        pollingIntervalRef.current = null
+      }
+      
+      if (batchPollingIntervalRef.current) {
+        clearInterval(batchPollingIntervalRef.current)
+        batchPollingIntervalRef.current = null
+      }
+    }
+  }, [uploadedMaterialIds, batchId, pollProcessingStatuses, pollBatchStatus])
+
   // Watch for changes in the upload progress from the store
   useEffect(() => {
     // If we have files in progress but the store indicates an upload is not happening,
@@ -77,27 +334,33 @@ export function FileManagement() {
         // Mark all as completed
         setFileProgresses(prev => 
           prev.map(fp => ({ ...fp, status: 'completed', progress: 100 }))
-        );
-        setUploadSuccess(true);
-        setUploadError(null);
+        )
+        setUploadSuccess(true)
+        setUploadError(null)
         
-        // If we have material IDs, move to embedding stage
+        // If we have material IDs, trigger polling to update UI based on actual server state
         if (uploadedMaterialIds.length > 0) {
-          setProcessingStage('embedding');
+          // Initial poll to determine next UI state
+          if (batchId) {
+            pollBatchStatus()
+          } else {
+            pollProcessingStatuses()
+          }
         } else {
-          // Otherwise, reset after a delay
-          setTimeout(() => {
-            setProcessingStage('complete');
-            
+          // No material IDs, just reset
+          if (lastProcessingStageRef.current !== 'complete') {
+            setProcessingStage('complete')
+            lastProcessingStageRef.current = 'complete'
+          
             // Final reset after showing completion
             setTimeout(() => {
-              resetUploadState();
-              setProcessingStage('idle');
-              setFileProgresses([]);
-              setUploadSuccess(false);
-              setUploadedMaterialIds([]);
-            }, 3000);
-          }, 1000);
+              resetUploadState()
+              setProcessingStage('idle')
+              lastProcessingStageRef.current = 'idle'
+              setFileProgresses([])
+              setUploadSuccess(false)
+            }, 3000)
+          }
         }
       } else if (!uploadProgress.isSuccess && !uploadProgress.isUploading && !uploadError) {
         // If not uploading and not successful, assume an error occurred
@@ -108,18 +371,31 @@ export function FileManagement() {
               ? { ...fp, status: 'failed' } 
               : fp
           )
-        );
+        )
         
         if (uploadError) {
           toast({
             title: "Upload Failed",
             description: uploadError,
             variant: "destructive"
-          });
+          })
         }
       }
     }
-  }, [uploadProgress, currentFileIndex, toast, uploadError, uploadSuccess, uploadedMaterialIds]);
+  }, [
+    uploadProgress.isUploading,
+    uploadProgress.isSuccess,
+    currentFileIndex, 
+    toast, 
+    uploadError, 
+    uploadSuccess, 
+    uploadedMaterialIds,
+    batchId,
+    resetUploadState, 
+    fileProgresses.length,
+    pollProcessingStatuses,
+    pollBatchStatus
+  ])
 
   // Handle file upload submission
   const handleSubmitUpload = useCallback(async (
@@ -135,132 +411,150 @@ export function FileManagement() {
       return;
     }
 
-    // Close the dialog immediately
-    setShowConfirmDialog(false);
-    
-    // Reset error state
-    setUploadError(null);
-    
-    // Set uploading state
-    setProcessingStage('uploading');
-    setUploadSuccess(false);
-    setCurrentFileIndex(0);
-    setTotalFiles(files.length);
-    setCurrentFileName(files[0]?.name || "");
-    setUploadedMaterialIds([]);
+  // Close the dialog immediately
+  setShowConfirmDialog(false);
+  
+  // Reset error state and batch ID
+  setUploadError(null);
+  setBatchId(null);
+  
+  // Set uploading state
+  setProcessingStage('uploading');
+  lastProcessingStageRef.current = 'uploading';
+  setUploadSuccess(false);
+  setCurrentFileIndex(0);
+  setTotalFiles(files.length);
+  setCurrentFileName(files[0]?.name || "");
+  setUploadedMaterialIds([]);
 
-    // Create initialProgresses with correct typing
-    const initialProgresses: FileProgress[] = files.map((file, index) => ({
-      name: file.name,
-      progress: 0,
-      // First file is uploading, rest are pending
-      status: index === 0 ? 'uploading' : 'pending'
-    }));
-    
-    setFileProgresses(initialProgresses);
+  // Create initial progresses
+  const initialProgresses: FileProgress[] = files.map((file, index) => ({
+    name: file.name,
+    progress: 0,
+    // First file is uploading, rest are pending
+    status: index === 0 ? 'uploading' : 'pending'
+  }));
+  
+  setFileProgresses(initialProgresses);
 
-    try {
-      // Start the actual upload through the material store
-      const response = await uploadMultipleMaterials(files, uploadData);
+  try {
+    // Always use the batch upload endpoint for consistency, even with a single file
+    const response = await uploadMultipleMaterials(files, uploadData);
+    
+    // Store the material IDs for the embedding progress component
+    if (Array.isArray(response)) {
+      const materialIds = response.map((item: MaterialUploadResponse) => item.id);
+      setUploadedMaterialIds(materialIds);
       
-      // Store the material IDs for the embedding progress component
-      if (Array.isArray(response)) {
-        const materialIds = response.map((item: MaterialUploadResponse) => item.id);
-        setUploadedMaterialIds(materialIds);
+      // Check if we have a batch ID from the response
+      const firstResponse = response[0];
+      if (firstResponse && 'batch_id' in firstResponse && firstResponse.batch_id) {
+        const newBatchId = firstResponse.batch_id;
+        setBatchId(newBatchId);
+        
+        // Start polling immediately
+        setTimeout(() => {
+          pollBatchStatus();
+        }, 1000);
+      } else {
+        // Start material polling immediately
+        setTimeout(() => {
+          pollProcessingStatuses();
+        }, 1000);
       }
-      
-      toast({
-        title: "Upload Complete",
-        description: `${files.length} files have been uploaded successfully.`,
-      });
-      
-    } catch (error) {
-      console.error('Upload error:', error);
-      
-      // Store the error message
-      const errorMessage = error instanceof Error ? error.message : "An error occurred during upload.";
-      setUploadError(errorMessage);
-      
-      toast({
-        title: "Upload Failed",
-        description: errorMessage,
-        variant: "destructive"
-      });
     }
-  }, [toast, uploadMultipleMaterials]);
-
-  // Handle manual progress update for demo purposes
-  // In a real application, you would get progress from your API
-  useEffect(() => {
-    if (processingStage !== 'uploading' || fileProgresses.length === 0 || uploadSuccess) return;
+    toast({
+      title: "Upload Complete",
+      description: `${files.length} files have been uploaded successfully.`,
+    });
     
-    const progressInterval = setInterval(() => {
-      setFileProgresses(prev => {
-        // Clone the array
-        const newProgresses = [...prev];
-        
-        // Find the current uploading file
-        const uploadingIndex = newProgresses.findIndex(fp => 
-          fp.status === 'uploading' || fp.status === 'processing'
-        );
-        
-        if (uploadingIndex === -1) return prev;
-        
-        // Update progress for the uploading file
-        if (newProgresses[uploadingIndex].status === 'uploading') {
-          newProgresses[uploadingIndex] = {
-            ...newProgresses[uploadingIndex],
-            progress: Math.min(newProgresses[uploadingIndex].progress + 5, 100)
-          };
-          
-          // If progress reaches 100%, change status to processing
-          if (newProgresses[uploadingIndex].progress === 100) {
-            newProgresses[uploadingIndex].status = 'processing';
-            
-            // Update current file name
-            setCurrentFileName(newProgresses[uploadingIndex].name);
-          }
-        } else if (newProgresses[uploadingIndex].status === 'processing') {
-          // If file is in processing state, increment more slowly
-          newProgresses[uploadingIndex] = {
-            ...newProgresses[uploadingIndex],
-            progress: Math.min(newProgresses[uploadingIndex].progress + 1, 100)
-          };
-          
-          // If complete, move to next file
-          if (newProgresses[uploadingIndex].progress === 100) {
-            newProgresses[uploadingIndex].status = 'completed';
-            
-            // Find next pending file
-            const nextIndex = newProgresses.findIndex(fp => fp.status === 'pending');
-            if (nextIndex !== -1) {
-              newProgresses[nextIndex].status = 'uploading';
-              setCurrentFileIndex(nextIndex);
-              setCurrentFileName(newProgresses[nextIndex].name);
+  } catch (error) {
+    console.error('Upload error:', error);
+    
+    // Store the error message
+    const errorMessage = error instanceof Error ? error.message : "An error occurred during upload.";
+    setUploadError(errorMessage);
+    
+    toast({
+      title: "Upload Failed",
+      description: errorMessage,
+      variant: "destructive"
+    });
+  }
+}, [toast, uploadMultipleMaterials, pollBatchStatus, pollProcessingStatuses])
+
+  // Update file progress based on upload progress from store
+  useEffect(() => {
+    if (processingStage !== 'uploading' || !uploadProgress.files || Object.keys(uploadProgress.files).length === 0) {
+      return
+    }
+    
+    // Use a local object to hold file updates to prevent state update loops
+    const fileUpdates: Record<string, {progress: number, status: string}> = {}
+    let hasUpdates = false
+    
+    // Check for files that need updates
+    fileProgresses.forEach(fp => {
+      const storeProgress = uploadProgress.files[fp.name]
+      if (storeProgress && 
+          (fp.progress !== storeProgress.progress || fp.status !== storeProgress.status)) {
+        fileUpdates[fp.name] = { 
+          progress: storeProgress.progress, 
+          status: storeProgress.status 
+        }
+        hasUpdates = true
+      }
+    })
+    
+    // Only update if necessary
+    if (hasUpdates) {
+      setFileProgresses(prev => 
+        prev.map(fp => {
+          const update = fileUpdates[fp.name]
+          if (update) {
+            return {
+              ...fp,
+              progress: update.progress,
+              status: update.status as 'pending' | 'uploading' | 'processing' | 'completed' | 'failed'
             }
           }
-        }
-        
-        return newProgresses;
-      });
-    }, 200);
+          return fp
+        })
+      )
+    }
     
-    return () => clearInterval(progressInterval);
-  }, [processingStage, fileProgresses, uploadSuccess]);
+    // Update current file index based on store - only if there's a change
+    const currentUploadingFile = Object.values(uploadProgress.files).find(
+      file => file.status === 'uploading' || file.status === 'processing'
+    )
+    
+    if (currentUploadingFile && currentUploadingFile.name !== currentFileName) {
+      setCurrentFileName(currentUploadingFile.name)
+      const index = fileProgresses.findIndex(fp => fp.name === currentUploadingFile.name)
+      if (index !== -1 && index !== currentFileIndex) {
+        setCurrentFileIndex(index)
+      }
+    }
+  }, [uploadProgress.files, processingStage, fileProgresses, currentFileName, currentFileIndex])
 
   // Handle completion of embedding process
   const handleEmbeddingComplete = useCallback(() => {
-    setProcessingStage('complete');
+    if (lastProcessingStageRef.current !== 'complete') {
+      setProcessingStage('complete')
+      lastProcessingStageRef.current = 'complete'
     
-    // Final reset after showing completion
-    setTimeout(() => {
-      resetUploadState();
-      setProcessingStage('idle');
-      setFileProgresses([]);
-      setUploadSuccess(false);
-      setUploadedMaterialIds([]);
-    }, 1000);
-  }, [resetUploadState]);
+      // Final reset after showing completion
+      setTimeout(() => {
+        resetUploadState()
+        setProcessingStage('idle')
+        lastProcessingStageRef.current = 'idle'
+        setFileProgresses([])
+        setUploadSuccess(false)
+        setUploadedMaterialIds([])
+        setBatchId(null)
+      }, 1000)
+    }
+  }, [resetUploadState])
 
   return (
     <FileUploadProvider>
@@ -311,10 +605,12 @@ export function FileManagement() {
                 />
               )}
               
-              {processingStage === 'embedding' && (
+              {(processingStage === 'text_processing' || processingStage === 'indexing') && (
                 <EmbeddingProgress 
                   materialIds={uploadedMaterialIds}
                   onComplete={handleEmbeddingComplete}
+                  initialStage={processingStage === 'text_processing' ? 'text_extraction' : 'embedding'}
+                  batchId={batchId || undefined}
                 />
               )}
               

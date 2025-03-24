@@ -1,15 +1,8 @@
+import { ConversationSummary, Message } from './conversation';
+import { Course } from "./course.types";
+
 // Message role types
 export type MessageRole = 'user' | 'assistant' | 'system';
-
-// Message interface
-export interface Message {
-  id: string;
-  content: string;
-  role: MessageRole;
-  timestamp: string;
-  citations?: Citation[];
-  attachments?: Attachment[];
-}
 
 // Citation for referencing source material
 export interface Citation {
@@ -50,7 +43,7 @@ export interface AIModel {
 export interface Conversation {
   id: string;
   title: string;
-  subject: Subject | null;
+  course: Course | null;  // Changed from subject to course
   model: AIModel | null;
   createdAt: string;
   updatedAt: string;
@@ -73,14 +66,14 @@ export interface ChatMessageProps {
 
 // Chat Header Props
 export interface ChatHeaderProps {
-    subject: Subject | null;
-    model: AIModel | null;
-    onSubjectChange: (subject: Subject | null) => void;
-    onModelChange: (model: AIModel | null) => void;
-    onToggleSidebar: () => void;
-    isLoading?: boolean;
-    sidebarVisible?: boolean;
-  }
+  course: Course | null;
+  model: AIModel | null;
+  onCourseChange: (course: Course) => void;
+  onModelChange: (model: AIModel | null) => void;
+  onToggleSidebar: () => void;
+  isLoading?: boolean;
+  sidebarVisible?: boolean;
+}
 
 // Chat Input Props
 export interface ChatInputProps {
@@ -124,7 +117,21 @@ export interface ModelSelectorProps {
 
 // Empty State Props
 export interface EmptyStateProps {
-    subject: Subject | null;
-    onStartConversation: (message: string) => void;
-    isMobile?: boolean;
-  }
+  course: Course | null;
+  onStartConversation: (message: string) => void;
+  isMobile?: boolean;
+  subject? : Subject | null;
+}
+
+export interface CourseSelectorProps {
+  selectedCourse: Course | null;
+  onCourseChange: (course: Course) => void;
+  courses: Course[];
+  isLoading?: boolean;
+}
+
+export interface ExtendedConversationSummary extends ConversationSummary {
+  lastMessage?: string;
+  queryType?: string;
+  pinned?: boolean;
+}

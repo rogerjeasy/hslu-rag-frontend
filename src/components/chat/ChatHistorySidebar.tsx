@@ -2,18 +2,29 @@
 
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Search, Plus, Pin, Trash, PinOff, Loader2, MoreHorizontal, Sparkles } from 'lucide-react';
+import { Search, Plus, Pin, Trash, PinOff, Loader2, MoreHorizontal, Sparkles, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
-import { ChatHistorySidebarProps, Conversation } from '@/types/chat';
 import { cn } from '@/lib/utils';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
   DropdownMenuItem, 
-  DropdownMenuTrigger 
+  DropdownMenuTrigger,
+  // DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu';
+import { useConversationStore } from '@/store/conversationStore';
+import { ExtendedConversationSummary } from '@/types/conversation';
+import { QueryType } from '@/types/query';
+
+interface ChatHistorySidebarProps {
+  conversations: ExtendedConversationSummary[];
+  currentConversationId?: string;
+  onSelectConversation: (id: string) => void;
+  onStartNewConversation: () => void;
+  isLoading?: boolean;
+}
 
 export default function ChatHistorySidebar({ 
   conversations, 
@@ -22,9 +33,21 @@ export default function ChatHistorySidebar({
   onStartNewConversation,
   isLoading = false
 }: ChatHistorySidebarProps) {
-  const [searchQuery, setSearchQuery] = useState('');
   const [isMobile, setIsMobile] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  
+  // Get the conversation store
+  const conversationStore = useConversationStore();
+  
+  // Extract state from the store
+  const { 
+    searchTerm, 
+    setSearchTerm, 
+    selectedQueryType, 
+    setSelectedQueryType,
+    resetFilters 
+  } = conversationStore;
   
   // Detect screen size
   useEffect(() => {
@@ -47,13 +70,8 @@ export default function ChatHistorySidebar({
     };
   }, []);
   
-  // Filter conversations based on search query
-  const filteredConversations = conversations.filter(conversation => 
-    conversation.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-  
   // Sort conversations: pinned first, then by updated date
-  const sortedConversations = [...filteredConversations].sort((a, b) => {
+  const sortedConversations = [...conversations].sort((a, b) => {
     // Pinned conversations go first
     if (a.pinned && !b.pinned) return -1;
     if (!a.pinned && b.pinned) return 1;
@@ -64,16 +82,39 @@ export default function ChatHistorySidebar({
   
   // Pin/unpin a conversation
   const togglePin = (conversationId: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent triggering conversation selection
-    // In a real application, you would update this in your database
-    console.log(`Toggle pin for conversation: ${conversationId}`);
+    e.stopPropagation();
+    
+    const currentState = conversations.find(conv => conv.id === conversationId);
+    
+    if (currentState) {
+      conversationStore.updateConversation(conversationId, { 
+        pinned: !currentState.pinned 
+      });
+    }
   };
   
   // Delete a conversation
   const deleteConversation = (conversationId: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent triggering conversation selection
-    // In a real application, you would remove this from your database
-    console.log(`Delete conversation: ${conversationId}`);
+    e.stopPropagation(); 
+    if (conversationId) {
+      conversationStore.deleteConversation(conversationId);
+    }
+  };
+
+  // Handle search input
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  };
+
+  // Handle query type filter
+  const handleQueryTypeFilter = (queryType: QueryType | null) => {
+    setSelectedQueryType(queryType);
+    setShowFilters(false);
+  };
+
+  // Toggle filters view
+  const toggleFilters = () => {
+    setShowFilters(!showFilters);
   };
 
   return (
@@ -98,22 +139,107 @@ export default function ChatHistorySidebar({
           <Sparkles className="h-3.5 w-3.5 text-primary/70 animate-twinkle" />
         </h2>
         
-        {/* Search */}
-        <div className="relative transition-transform duration-300 hover:scale-[1.01]">
-          {isLoading ? (
-            <Loader2 className="absolute left-2.5 top-2.5 h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground animate-spin" />
-          ) : (
-            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground transition-colors duration-300 group-hover:text-primary" />
-          )}
-          <Input
-            type="text"
-            placeholder={isLoading ? "Loading..." : "Search conversations..."}
-            className="pl-8 h-8 sm:h-9 text-xs sm:text-sm border-border/50 bg-background/70 focus:bg-background focus-visible:ring-primary/30 transition-all duration-300 shadow-sm hover:shadow-md"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+        <div className="flex items-center gap-2 mb-3">
+          {/* Search */}
+          <div className="relative transition-transform duration-300 hover:scale-[1.01] flex-1">
+            {isLoading ? (
+              <Loader2 className="absolute left-2.5 top-2.5 h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground animate-spin" />
+            ) : (
+              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground transition-colors duration-300 group-hover:text-primary" />
+            )}
+            <Input
+              type="text"
+              placeholder={isLoading ? "Loading..." : "Search conversations..."}
+              className="pl-8 h-8 sm:h-9 text-xs sm:text-sm border-border/50 bg-background/70 focus:bg-background focus-visible:ring-primary/30 transition-all duration-300 shadow-sm hover:shadow-md"
+              value={searchTerm}
+              onChange={handleSearchChange}
+              disabled={isLoading}
+            />
+          </div>
+          
+          {/* Filter button */}
+          <Button 
+            variant="outline" 
+            size="icon" 
+            onClick={toggleFilters}
             disabled={isLoading}
-          />
+            className={cn(
+              "h-8 w-8 sm:h-9 sm:w-9 border-border/50 transition-all duration-300",
+              selectedQueryType ? "bg-primary/10 text-primary" : "bg-background/70 text-muted-foreground"
+            )}
+          >
+            <Filter className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="sr-only">Filter conversations</span>
+          </Button>
         </div>
+        
+        {/* Filter dropdown */}
+        {showFilters && (
+          <div className="mb-3 p-3 rounded-md border border-border/50 bg-background/70 shadow-md animate-fadeIn text-xs">
+            <div className="font-medium mb-2">Filter by type:</div>
+            <div className="space-y-1">
+              <div 
+                onClick={() => handleQueryTypeFilter(null)} 
+                className={cn(
+                  "p-1.5 rounded cursor-pointer flex items-center",
+                  !selectedQueryType ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted transition-colors duration-200"
+                )}
+              >
+                All conversations
+              </div>
+              <div 
+                onClick={() => handleQueryTypeFilter(QueryType.QUESTION_ANSWERING)} 
+                className={cn(
+                  "p-1.5 rounded cursor-pointer flex items-center",
+                  selectedQueryType === QueryType.QUESTION_ANSWERING ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted transition-colors duration-200"
+                )}
+              >
+                Q&A
+              </div>
+              <div 
+                onClick={() => handleQueryTypeFilter(QueryType.STUDY_GUIDE)} 
+                className={cn(
+                  "p-1.5 rounded cursor-pointer flex items-center",
+                  selectedQueryType === QueryType.STUDY_GUIDE ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted transition-colors duration-200"
+                )}
+              >
+                Study Guides
+              </div>
+              <div 
+                onClick={() => handleQueryTypeFilter(QueryType.PRACTICE_QUESTIONS)} 
+                className={cn(
+                  "p-1.5 rounded cursor-pointer flex items-center",
+                  selectedQueryType === QueryType.PRACTICE_QUESTIONS ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted transition-colors duration-200"
+                )}
+              >
+                Practice Questions
+              </div>
+              <div 
+                onClick={() => handleQueryTypeFilter(QueryType.KNOWLEDGE_GAP)} 
+                className={cn(
+                  "p-1.5 rounded cursor-pointer flex items-center",
+                  selectedQueryType === QueryType.KNOWLEDGE_GAP ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted transition-colors duration-200"
+                )}
+              >
+                Knowledge Gap Analysis
+              </div>
+              
+              {(searchTerm || selectedQueryType) && (
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  onClick={() => {
+                    resetFilters();
+                    setShowFilters(false);
+                  }}
+                  className="w-full h-7 mt-1 text-xs"
+                >
+                  Clear filters
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
         
         {/* New Chat Button */}
         <Button 
@@ -159,9 +285,13 @@ export default function ChatHistorySidebar({
               />
             ))}
           </div>
-        ) : searchQuery ? (
+        ) : searchTerm ? (
           <div className="p-3 sm:p-4 text-center text-muted-foreground text-xs sm:text-sm animate-fadeIn">
-            No conversations matching &quot;{searchQuery}&quot;
+            No conversations matching &quot;{searchTerm}&quot;
+          </div>
+        ) : selectedQueryType ? (
+          <div className="p-3 sm:p-4 text-center text-muted-foreground text-xs sm:text-sm animate-fadeIn">
+            No {getQueryTypeName(selectedQueryType)} conversations found
           </div>
         ) : (
           <div className="p-3 sm:p-4 text-center text-muted-foreground text-xs sm:text-sm animate-fadeIn">
@@ -173,8 +303,24 @@ export default function ChatHistorySidebar({
   );
 }
 
+// Helper function to get the friendly name of a query type
+function getQueryTypeName(queryType: QueryType): string {
+  switch (queryType) {
+    case QueryType.QUESTION_ANSWERING:
+      return 'Q&A';
+    case QueryType.STUDY_GUIDE:
+      return 'Study Guide';
+    case QueryType.PRACTICE_QUESTIONS:
+      return 'Practice Questions';
+    case QueryType.KNOWLEDGE_GAP:
+      return 'Knowledge Gap Analysis';
+    default:
+      return '';
+  }
+}
+
 interface ConversationItemProps {
-  conversation: Conversation;
+  conversation: ExtendedConversationSummary;
   isActive: boolean;
   onSelect: () => void;
   onTogglePin: (id: string, e: React.MouseEvent) => void;
@@ -217,7 +363,7 @@ function ConversationItem({
       onClick={isLoading ? undefined : onSelect}
     >
       <div className="flex justify-between items-start gap-1">
-        {/* Conversation title & subject */}
+        {/* Conversation title & course */}
         <div className="flex-1 min-w-0 max-w-full">
           <div className="font-medium text-xs sm:text-sm truncate group-hover:text-primary/90 transition-colors duration-300">
             {conversation.title}
@@ -227,12 +373,11 @@ function ConversationItem({
               </span>
             )}
           </div>
-          {conversation.subject && (
+          {conversation.queryType && (
             <div className="text-xs text-muted-foreground flex items-center gap-1 truncate">
-              {conversation.subject.icon && (
-                <span className="flex-shrink-0 group-hover:animate-bounce-subtle">{conversation.subject.icon}</span>
-              )}
-              <span className="truncate transition-colors duration-300 group-hover:text-muted-foreground/80">{conversation.subject.name}</span>
+              <span className="truncate transition-colors duration-300 group-hover:text-muted-foreground/80">
+                {getQueryTypeName(conversation.queryType)}
+              </span>
             </div>
           )}
         </div>
@@ -319,12 +464,12 @@ function ConversationItem({
         )}
       </div>
       
-      {/* Date & AI model */}
+      {/* Date & Message preview */}
       <div className="flex justify-between items-center mt-1 text-[10px] sm:text-xs text-muted-foreground">
         <span className="truncate transition-colors duration-300 group-hover:text-muted-foreground/80">{formattedDate}</span>
-        {conversation.model && (
-          <span className="bg-primary/5 px-1.5 py-0.5 rounded text-[10px] sm:text-xs truncate ml-1 flex-shrink-0 transition-all duration-300 group-hover:bg-primary/10">
-            {conversation.model.name}
+        {conversation.lastMessagePreview && (
+          <span className="truncate ml-1 max-w-[60%]" title={conversation.lastMessagePreview}>
+            {conversation.lastMessagePreview.substring(0, 20)}...
           </span>
         )}
       </div>

@@ -2,11 +2,16 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowDown, MessageSquare } from 'lucide-react';
+import { ArrowDown, MessageSquare, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ChatMessage from './ChatMessage';
-import LoadingIndicator from '../ui/LoadingIndicator';
-import { ChatMessageListProps } from '@/types/chat';
+import { Message } from '@/types/conversation';
+
+interface ChatMessageListProps {
+  messages: Message[];
+  isLoading: boolean;
+  messagesEndRef: React.RefObject<HTMLDivElement> | null;
+}
 
 export default function ChatMessageList({
   messages,
@@ -16,6 +21,12 @@ export default function ChatMessageList({
   const containerRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
+  const [mounted, setMounted] = useState(false);
+
+  // Mark component as mounted for animations
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Detect scroll position to show/hide scroll button
   const handleScroll = () => {
@@ -53,7 +64,10 @@ export default function ChatMessageList({
   };
 
   return (
-    <div className="relative h-full flex flex-col">
+    <div 
+      className="relative h-full flex flex-col" 
+      style={{ opacity: mounted ? 1 : 0, transition: 'opacity 300ms ease-in-out' }}
+    >
       {/* Empty state if no messages */}
       {messages.length === 0 && !isLoading && (
         <div className="flex-1 flex items-center justify-center text-center p-8">
@@ -90,7 +104,7 @@ export default function ChatMessageList({
             <AnimatePresence initial={false}>
               {messages.map((message, index) => (
                 <motion.div
-                  key={message.id}
+                  key={message.id || `message-${index}`}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: 0.05 }}
@@ -98,6 +112,7 @@ export default function ChatMessageList({
                   <ChatMessage
                     message={message}
                     isLatestMessage={index === messages.length - 1}
+                    showTimestamp={true}
                   />
                 </motion.div>
               ))}
@@ -113,13 +128,16 @@ export default function ChatMessageList({
               >
                 <div className="mx-auto max-w-3xl flex items-start gap-4">
                   <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-gradient-to-br from-blue-500 to-cyan-600 text-white shadow-sm">
-                    <span className="animate-pulse">AI</span>
+                    <Loader2 className="h-5 w-5 animate-spin" />
                   </div>
-                  <div className="flex-1 min-w-0 pt-2">
-                    <LoadingIndicator 
-                      size="medium" 
-                    //   label="Assistant is thinking..." 
-                    />
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <div className="flex gap-2 items-center">
+                      <span className="font-semibold text-sm md:text-base">AI Assistant</span>
+                      <span className="text-xs text-muted-foreground animate-pulse">Thinking...</span>
+                    </div>
+                    <div className="h-5 w-4/5 bg-muted/50 rounded-md animate-pulse"></div>
+                    <div className="h-5 w-2/3 bg-muted/50 rounded-md animate-pulse"></div>
+                    <div className="h-5 w-3/4 bg-muted/50 rounded-md animate-pulse"></div>
                   </div>
                 </div>
               </motion.div>

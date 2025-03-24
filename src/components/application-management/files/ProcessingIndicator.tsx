@@ -54,6 +54,22 @@ export function ProcessingIndicator({
     }
   }
   
+  // Get file upload step name
+  const getUploadStepName = (status: string) => {
+    switch (status) {
+      case 'uploading':
+        return 'Uploading to server'
+      case 'processing':
+        return 'Processing upload'
+      case 'completed':
+        return 'Upload complete'
+      case 'failed':
+        return 'Upload failed'
+      default:
+        return 'Queued for upload'
+    }
+  }
+  
   return (
     <div className="py-8">
       <div className="max-w-lg mx-auto">
@@ -97,19 +113,60 @@ export function ProcessingIndicator({
                   <Loader2 className="h-5 w-5 text-primary" />
                 </motion.div>
               </div>
-             
-              <h3 className="text-xl font-semibold mb-2 text-center">Uploading Files</h3>
-              <p className="text-muted-foreground mb-6 text-center">
-                Processing file {current} of {total}
-              </p>
+              
+              {/* Upload Stage Headers */}
+              <div className="flex flex-col mb-6 text-center">
+                <h3 className="text-xl font-semibold mb-1">Uploading Files</h3>
+                <div className="text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-full inline-block mx-auto dark:bg-blue-900/20 dark:text-blue-300">
+                  Stage 1 of 3: File Upload
+                </div>
+                <p className="text-muted-foreground mt-2">
+                  Processing file {current} of {total}
+                </p>
+              </div>
               
               {/* Overall progress */}
               <div className="w-full mb-6">
                 <div className="flex justify-between mb-2 text-sm">
-                  <span>Overall Progress</span>
+                  <span>Overall Upload Progress</span>
                   <span>{overallProgress}%</span>
                 </div>
                 <Progress value={overallProgress} className="h-2" />
+              </div>
+              
+              {/* Upload pipeline visualization */}
+              <div className="w-full mb-6">
+                <h4 className="text-sm font-medium mb-3">Processing Pipeline</h4>
+                <div className="flex justify-between relative mb-4">
+                  {/* Connector line */}
+                  <div className="absolute top-4 left-0 right-0 h-0.5 bg-gray-200 z-0"></div>
+                  
+                  {/* Upload stage - always active or completed */}
+                  <div className="flex flex-col items-center z-10">
+                    <div className="w-8 h-8 rounded-full bg-blue-100 border-2 border-blue-500 text-blue-600 flex items-center justify-center mb-2">
+                      <UploadCloud className="h-4 w-4" />
+                    </div>
+                    <span className="text-xs text-blue-600 font-medium text-center">File Upload</span>
+                  </div>
+                  
+                  {/* Text Processing stage - inactive */}
+                  <div className="flex flex-col items-center z-10">
+                    <div className="w-8 h-8 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center mb-2">
+                      <FileText className="h-4 w-4" />
+                    </div>
+                    <span className="text-xs text-gray-500 text-center">Text Processing</span>
+                  </div>
+                  
+                  {/* Embedding stage - inactive */}
+                  <div className="flex flex-col items-center z-10">
+                    <div className="w-8 h-8 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center mb-2">
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                    </div>
+                    <span className="text-xs text-gray-500 text-center">Embedding</span>
+                  </div>
+                </div>
               </div>
               
               {/* Current file progress */}
@@ -121,7 +178,7 @@ export function ProcessingIndicator({
                       <span className="font-medium">Current File</span>
                     </div>
                     <span className="text-sm text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full dark:bg-blue-900 dark:text-blue-300">
-                      {currentFile.status}
+                      {getUploadStepName(currentFile.status)}
                     </span>
                   </div>
                   <p className="text-sm truncate mb-2">{currentFile.name}</p>

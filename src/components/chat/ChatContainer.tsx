@@ -6,167 +6,110 @@ import ChatMessageList from './ChatMessageList';
 import ChatInput from './ChatInput';
 import ChatControls from './ChatControls';
 import ChatHistorySidebar from './ChatHistorySidebar';
-import EmptyState from '../ui/EmptyState';
+import EmptyState from './EmptyState';
 import LoadingIndicator from '../ui/LoadingIndicator';
-import { Message, Conversation, Subject, AIModel } from '@/types/chat';
+import { Course } from '@/types/course.types';
+import { AIModel } from '@/types/chat';
+import { QueryType } from '@/types/query';
+import { useConversationStore } from '@/store/conversationStore';
+import { useCourseStore } from '@/store/courseStore';
 
 export default function ChatContainer() {
-  // State for the current conversation
-  const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
+  // Get stores
+  const conversationStore = useConversationStore();
+  const courseStore = useCourseStore();
+
+  // Local state for UI
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [selectedModel, setSelectedModel] = useState<AIModel | null>(null);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [showSidebar, setShowSidebar] = useState(true);
   const [initialLoading, setInitialLoading] = useState(true);
 
-  // Reference to maintain scroll position
+  // Reference to maintain scroll position - Fixed to use HTMLDivElement explicitly
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Extract data from stores
+  const { 
+    currentConversation, 
+    isLoading: isConversationLoading,
+    filteredConversations
+  } = conversationStore;
+
+  // Extract messages from current conversation
+  const messages = currentConversation?.messages || [];
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Load conversations from local storage or API
+  // Load conversations and courses on initial render
   useEffect(() => {
-    const loadConversations = async () => {
+    const initialize = async () => {
       setInitialLoading(true);
+      
       try {
-        // Here you would typically fetch from your backend
-        // For now, we'll use mock data from localStorage
-        const savedConversations = localStorage.getItem('conversations');
-        if (savedConversations) {
-          setConversations(JSON.parse(savedConversations));
-        }
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 800));
+        // Load courses first
+        await courseStore.fetchCourses();
+        
+        // Then load conversations
+        await conversationStore.fetchConversations();
       } catch (error) {
-        console.error('Failed to load conversations:', error);
+        console.error('Failed to initialize:', error);
       } finally {
         setInitialLoading(false);
       }
     };
 
-    loadConversations();
-  }, []);
+    initialize();
+  }, [courseStore, conversationStore]);
 
   // Function to send a message
   const sendMessage = async (content: string) => {
-    if (!content.trim() || !selectedSubject) return;
+    if (!content.trim() || !selectedCourse) return;
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      content,
-      role: 'user',
-      timestamp: new Date().toISOString(),
-    };
+    if (!currentConversation) {
+      // Create a new conversation first
+      const newConversation = await conversationStore.createConversation({
+        title: content.slice(0, 30) + (content.length > 30 ? '...' : ''),
+        courseId: selectedCourse.id,
+        initialMessage: content
+      });
 
-    setMessages((prev) => [...prev, userMessage]);
-    setIsLoading(true);
-
-    try {
-      // Create a new conversation if one doesn't exist
-      if (!currentConversation) {
-        const newConversation: Conversation = {
-          id: Date.now().toString(),
-          title: content.slice(0, 30) + (content.length > 30 ? '...' : ''),
-          subject: selectedSubject,
-          model: selectedModel,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          messages: [userMessage],
-        };
-        setCurrentConversation(newConversation);
-        setConversations((prev) => [newConversation, ...prev]);
-      } else {
-        // Update existing conversation
-        const updatedConversation = {
-          ...currentConversation,
-          updatedAt: new Date().toISOString(),
-          messages: [...currentConversation.messages, userMessage],
-        };
-        setCurrentConversation(updatedConversation);
-        setConversations((prev) =>
-          prev.map((conv) => (conv.id === updatedConversation.id ? updatedConversation : conv))
-        );
-      }
-
-      // Call your API to get a response from the AI
-      // This is a placeholder - replace with your actual API call
-      const response = await fetchAIResponse(content, selectedSubject, selectedModel);
-
-      const aiMessage: Message = {
-        id: Date.now().toString(),
-        content: response,
-        role: 'assistant',
-        timestamp: new Date().toISOString(),
-      };
-
-      setMessages((prev) => [...prev, aiMessage]);
-
-      // Update the conversation with the AI response
-      if (currentConversation) {
-        const updatedConversation = {
-          ...currentConversation,
-          updatedAt: new Date().toISOString(),
-          messages: [...currentConversation.messages, aiMessage],
-        };
-        setCurrentConversation(updatedConversation);
-        setConversations((prev) =>
-          prev.map((conv) => (conv.id === updatedConversation.id ? updatedConversation : conv))
-        );
-      }
-
-      // Save to localStorage (in a real app, you'd save to your backend)
-      localStorage.setItem('conversations', JSON.stringify(conversations));
-    } catch (error) {
-      console.error('Error sending message:', error);
-      // Handle error - display error message to user
-    } finally {
-      setIsLoading(false);
+      // Then send the message
+      await conversationStore.sendMessage(
+        newConversation.id,
+        content,
+        QueryType.QUESTION_ANSWERING
+      );
+    } else {
+      // Send message to existing conversation
+      await conversationStore.sendMessage(
+        currentConversation.id,
+        content,
+        QueryType.QUESTION_ANSWERING
+      );
     }
-  };
-
-  // Placeholder function for AI response - replace with actual API call
-  const fetchAIResponse = async (
-    message: string,
-    subject: Subject | null,
-    model: AIModel | null
-  ): Promise<string> => {
-    // Simulate API call delay
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    return `This is a placeholder response to your question about ${subject?.name}. In a real implementation, this would be a response from the ${model?.name} AI model.`;
   };
 
   // Start a new conversation
   const startNewConversation = () => {
-    setCurrentConversation(null);
-    setMessages([]);
+    conversationStore.setCurrentConversation(null);
   };
 
   // Load an existing conversation
   const loadConversation = (conversationId: string) => {
-    setIsLoading(true);
-    
-    const conversation = conversations.find((conv) => conv.id === conversationId);
-    if (conversation) {
-      setCurrentConversation(conversation);
-      setMessages(conversation.messages);
-      setSelectedSubject(conversation.subject);
-      setSelectedModel(conversation.model);
-    }
-    
-    // Simulate a short loading period for better UX
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 300);
+    conversationStore.getConversation(conversationId);
   };
 
   // Toggle sidebar visibility
   const toggleSidebar = () => {
     setShowSidebar(!showSidebar);
+  };
+
+  // Handle course change
+  const handleCourseChange = (course: Course) => {
+    setSelectedCourse(course);
   };
 
   // Display initial loading state
@@ -187,11 +130,11 @@ export default function ChatContainer() {
       {showSidebar && (
         <div className="w-64 border-r border-border h-full">
           <ChatHistorySidebar
-            conversations={conversations}
+            conversations={filteredConversations}
             currentConversationId={currentConversation?.id}
             onSelectConversation={loadConversation}
             onStartNewConversation={startNewConversation}
-            isLoading={isLoading}
+            isLoading={isConversationLoading}
           />
         </div>
       )}
@@ -199,12 +142,13 @@ export default function ChatContainer() {
       {/* Main Chat Interface */}
       <div className="flex flex-col flex-1 h-full">
         <ChatHeader
-          subject={selectedSubject}
+          course={selectedCourse}
           model={selectedModel}
-          onSubjectChange={setSelectedSubject}
+          onCourseChange={handleCourseChange}
           onModelChange={setSelectedModel}
           onToggleSidebar={toggleSidebar}
-          isLoading={isLoading}
+          isLoading={isConversationLoading}
+          sidebarVisible={showSidebar}
         />
 
         {/* Chat Messages or Empty State */}
@@ -212,18 +156,18 @@ export default function ChatContainer() {
           {messages.length > 0 ? (
             <ChatMessageList 
               messages={messages} 
-              isLoading={isLoading} 
-              messagesEndRef={messagesEndRef} 
+              isLoading={isConversationLoading} 
+              messagesEndRef={messagesEndRef as React.RefObject<HTMLDivElement>} 
             />
           ) : (
             <EmptyState 
-              subject={selectedSubject} 
+              course={selectedCourse}
               onStartConversation={sendMessage} 
             />
           )}
           
           {/* Overlay loading indicator for conversation changes */}
-          {isLoading && messages.length === 0 && (
+          {isConversationLoading && messages.length === 0 && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/80">
               <LoadingIndicator />
               <span className="ml-2">Preparing conversation...</span>
@@ -235,14 +179,22 @@ export default function ChatContainer() {
         <div className="border-t border-border p-4">
           <ChatInput 
             onSendMessage={sendMessage} 
-            isLoading={isLoading} 
-            disabled={!selectedSubject} 
+            isLoading={isConversationLoading} 
+            disabled={!selectedCourse}
           />
           <ChatControls 
             onStartNewConversation={startNewConversation} 
-            onClearConversation={() => setMessages([])}
+            onClearConversation={() => {
+              // Clear the current conversation by creating a new one
+              if (currentConversation && selectedCourse) {
+                conversationStore.createConversation({
+                  title: "New Conversation",
+                  courseId: selectedCourse.id
+                });
+              }
+            }}
             hasActiveConversation={messages.length > 0}
-            isLoading={isLoading}
+            isLoading={isConversationLoading}
           />
         </div>
       </div>

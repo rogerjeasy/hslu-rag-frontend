@@ -25,7 +25,7 @@ interface UserManagementState {
   // Data actions
   fetchUsers: () => Promise<void>;
   getUserById: (id: string) => Promise<User>;
-  updateUserRole: (id: string, role: UserRole) => Promise<void>;
+  updateUserRole: (id: string, roles: UserRole[]) => Promise<void>;
   selectUser: (user: User | null) => void;
 }
 
@@ -119,25 +119,18 @@ export const useUserManagementStore = create<UserManagementState>((set, get) => 
     }
   },
   
-  updateUserRole: async (id, role) => {
+  updateUserRole: async (id, roles) => {
     set({ isLoading: true, error: null });
     
     try {
-      await userService.updateUserRole(id, role);
+      await userService.updateUserRole(id, roles);
       
       // Update user in the store
       set(state => {
         const updatedUsers = state.users.map(user => {
-          if (user.uid === id) {
-            // If user currently only has one role, replace it
-            // If user has multiple roles and we're not adding a duplicate, add the new role
-            const newRoles = user.role.length === 1 
-              ? [role] 
-              : user.role.includes(role) 
-                ? user.role 
-                : [...user.role, role];
-                
-            return { ...user, role: newRoles };
+          if (user.id === id) {
+            // Replace the entire roles array with the new selection
+            return { ...user, role: roles };
           }
           return user;
         });
@@ -152,7 +145,7 @@ export const useUserManagementStore = create<UserManagementState>((set, get) => 
       get().applyFilters();
       
     } catch (error) {
-      console.error('Error updating user role:', error);
+      console.error('Error updating user roles:', error);
       set({ 
         error: error instanceof Error ? error.message : 'An unknown error occurred', 
         isLoading: false 

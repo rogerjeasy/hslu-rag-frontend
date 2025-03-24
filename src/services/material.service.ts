@@ -1,10 +1,11 @@
 // src/services/material.service.ts
 import { api, handleError } from '@/helpers/api';
-import { Material, MaterialProcessingStatus, MaterialUploadRequest } from '@/types/material.types';
+import { Material, MaterialProcessingStatus, MaterialUploadRequest, BatchProcessingStatus } from '@/types/material.types';
 
 class MaterialService {
   /**
    * Upload a single file material
+   * Use this method only for single file uploads
    */
   async uploadMaterial(
     file: File,
@@ -37,6 +38,7 @@ class MaterialService {
 
   /**
    * Upload multiple file materials
+   * Use this method for batch uploads of multiple files
    */
   async uploadMultipleMaterials(
     files: File[],
@@ -44,6 +46,12 @@ class MaterialService {
     metadata?: Record<string, { title?: string; description?: string }>
   ): Promise<Material[]> {
     try {
+      // If only one file is provided, use the single file upload endpoint
+      if (files.length === 1 && !metadata) {
+        const response = await this.uploadMaterial(files[0], data);
+        return [response];
+      }
+      
       const formData = new FormData();
       
       // Append each file
@@ -85,6 +93,45 @@ class MaterialService {
     } catch (error) {
       const errorMessage = handleError(error);
       throw new Error(`Failed to get processing status: ${errorMessage}`);
+    }
+  }
+
+  /**
+   * Get the status of a batch process
+   */
+  async getBatchStatus(batchId: string): Promise<BatchProcessingStatus> {
+    try {
+      const response = await api.get(`/materials/batch/${batchId}`);
+      return response.data;
+    } catch (error) {
+      const errorMessage = handleError(error);
+      throw new Error(`Failed to get batch status: ${errorMessage}`);
+    }
+  }
+  
+  /**
+   * Cancel a batch process
+   */
+  async cancelBatchProcessing(batchId: string): Promise<{message: string}> {
+    try {
+      const response = await api.post(`/materials/batch/${batchId}/cancel`);
+      return response.data;
+    } catch (error) {
+      const errorMessage = handleError(error);
+      throw new Error(`Failed to cancel batch: ${errorMessage}`);
+    }
+  }
+  
+  /**
+   * Get all batches with pagination
+   */
+  async getAllBatches(limit: number = 100, offset: number = 0): Promise<BatchProcessingStatus[]> {
+    try {
+      const response = await api.get(`/materials/batches?limit=${limit}&offset=${offset}`);
+      return response.data;
+    } catch (error) {
+      const errorMessage = handleError(error);
+      throw new Error(`Failed to get batches: ${errorMessage}`);
     }
   }
 

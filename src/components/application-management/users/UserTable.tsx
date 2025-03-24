@@ -236,7 +236,7 @@ export function UserTable({ onChangeRole }: UserTableProps) {
         <TableBody>
           {sortedUsers.map((user, index) => [
             <motion.tr
-              key={`row-${user.uid}`}
+              key={`row-${user.id}`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: index * 0.05 }}
@@ -248,9 +248,9 @@ export function UserTable({ onChangeRole }: UserTableProps) {
                     variant="ghost" 
                     size="sm" 
                     className="p-0"
-                    onClick={() => toggleExpand(user.uid)}
+                    onClick={() => toggleExpand(user.id)}
                   >
-                    {expandedUser === user.uid ? (
+                    {expandedUser === user.id ? (
                       <ChevronDown className="h-4 w-4" />
                     ) : (
                       <ChevronUp className="h-4 w-4" />
@@ -282,7 +282,7 @@ export function UserTable({ onChangeRole }: UserTableProps) {
                 </div>
                 <div className="md:hidden text-xs text-muted-foreground mt-1">
                   {user.role.map((role, roleIndex) => (
-                    <span key={`mobile-role-${user.uid}-${roleIndex}`} className="mr-1">
+                    <span key={`mobile-role-${user.id}-${roleIndex}`} className="mr-1">
                       {renderRoleBadge(role)}
                     </span>
                   ))}
@@ -292,7 +292,7 @@ export function UserTable({ onChangeRole }: UserTableProps) {
               <TableCell className="hidden md:table-cell">
                 <div className="flex flex-wrap gap-1">
                   {user.role.map((role, roleIndex) => (
-                    <span key={`desktop-role-${user.uid}-${roleIndex}`}>
+                    <span key={`desktop-role-${user.id}-${roleIndex}`}>
                       {renderRoleBadge(role)}
                     </span>
                   ))}
@@ -302,7 +302,7 @@ export function UserTable({ onChangeRole }: UserTableProps) {
               <TableCell className="hidden lg:table-cell text-muted-foreground">
                 <div className="flex items-center">
                   <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
-                  {formatDate(user.accountCreatedAt)}
+                  {formatDate(user.accountCreatedAt || '')}
                 </div>
               </TableCell>
               
@@ -335,9 +335,9 @@ export function UserTable({ onChangeRole }: UserTableProps) {
               </TableCell>
             </motion.tr>,
             
-            expandedUser === user.uid && (
+            expandedUser === user.id && (
               <motion.tr 
-                key={`expanded-${user.uid}`}
+                key={`expanded-${user.id}`}
                 className="bg-muted/50"
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
@@ -387,7 +387,7 @@ export function UserTable({ onChangeRole }: UserTableProps) {
                         {user.interests?.length ? (
                           user.interests.map((interest, interestIndex) => (
                             <Badge 
-                              key={`interest-${user.uid}-${interestIndex}`} 
+                              key={`interest-${user.id}-${interestIndex}`} 
                               variant="outline" 
                               className="bg-background"
                             >

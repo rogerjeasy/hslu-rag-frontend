@@ -209,12 +209,12 @@ export function MainNav() {
             </NavigationMenuItem>
            
             <NavigationMenuItem>
-              <Link href="/practice" passHref legacyBehavior>
+              <Link href="/practice-questions" passHref legacyBehavior>
                 <NavigationMenuLink 
                   className={cn(
                     navigationMenuTriggerStyle(),
                     "bg-transparent transition-all duration-200 hover:bg-accent/50",
-                    pathname === "/practice" && "bg-accent/40 text-accent-foreground font-medium"
+                    pathname === "/practice-questions" && "bg-accent/40 text-accent-foreground font-medium"
                   )}
                 >
                   <motion.div 

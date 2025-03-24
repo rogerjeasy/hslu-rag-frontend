@@ -37,7 +37,7 @@ export function MaterialMetadataForm() {
   const materialTypes = [
     { value: 'lecture', label: 'Lecture', icon: <BookOpen className="h-4 w-4" /> },
     { value: 'lab', label: 'Lab Exercise', icon: <Code className="h-4 w-4" /> },
-    { value: 'reading', label: 'Reading', icon: <FileText className="h-4 w-4" /> },
+    { value: 'exam', label: 'Exam', icon: <FileText className="h-4 w-4" /> },
     { value: 'slides', label: 'Slides', icon: <Presentation className="h-4 w-4" /> },
     { value: 'exercise', label: 'Exercise', icon: <FileQuestion className="h-4 w-4" /> }
   ]

@@ -9,13 +9,20 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import Markdown from '../ui/Markdown';
-import { ChatMessageProps, Citation } from '@/types/chat';
+import { Message } from '@/types/conversation';
+import { Citation } from '@/types/query';
+
+interface ChatMessageProps {
+  message: Message;
+  showTimestamp?: boolean;
+  isLatestMessage?: boolean;
+}
 
 export default function ChatMessage({ 
   message, 
   showTimestamp = true,
   isLatestMessage = false
-}: ChatMessageProps & { isLatestMessage?: boolean }) {
+}: ChatMessageProps) {
   const [copied, setCopied] = useState(false);
   const messageRef = useRef<HTMLDivElement>(null);
   const isUser = message.role === 'user';
@@ -42,6 +49,12 @@ export default function ChatMessage({
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  // Extract citations from message metadata if present
+  // Use type assertion to help TypeScript understand the structure
+  const citations = Array.isArray(message.metadata?.citations) 
+    ? message.metadata.citations as Citation[]
+    : [] as Citation[];
 
   return (
     <div
@@ -131,33 +144,35 @@ export default function ChatMessage({
           </div>
 
           {/* Citations if they exist */}
-          {message.citations && message.citations.length > 0 && (
+          {citations.length > 0 && (
             <Card className="mt-4 overflow-hidden border-t border-border p-3">
               <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
                 <ExternalLink className="h-4 w-4" />
                 <span>Sources</span>
               </h4>
               <ul className="space-y-3">
-                {message.citations.map((citation: Citation) => (
-                  <li key={citation.id} className="group/citation text-sm">
+                {citations.map((citation, index) => (
+                  <li key={citation.materialId || index} className="group/citation text-sm">
                     <div className="flex gap-3">
                       <div className="flex-shrink-0">
                         <Badge variant="outline" className="h-6 text-xs px-2 rounded-sm">
-                          {citation.source.split('.')[0]}
+                          {citation.title?.split('.')[0] || `Source ${index + 1}`}
                         </Badge>
                       </div>
                       <div className="flex-1">
-                        <p className="text-sm mb-1 font-medium">{citation.text}</p>
-                        <a
-                          href={citation.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-blue-500 hover:underline flex items-center gap-1 group-hover/citation:text-blue-600"
-                        >
-                          <span>{citation.source}</span>
-                          {citation.page && <span>- Page {citation.page}</span>}
-                          <ExternalLink className="h-3 w-3 inline opacity-50 group-hover/citation:opacity-100" />
-                        </a>
+                        <p className="text-sm mb-1 font-medium">{citation.contentPreview}</p>
+                        {citation.fileUrl && (
+                          <a
+                            href={citation.fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-500 hover:underline flex items-center gap-1 group-hover/citation:text-blue-600"
+                          >
+                            <span>{citation.title}</span>
+                            {citation.pageNumber && <span>- Page {citation.pageNumber}</span>}
+                            <ExternalLink className="h-3 w-3 inline opacity-50 group-hover/citation:opacity-100" />
+                          </a>
+                        )}
                       </div>
                     </div>
                   </li>

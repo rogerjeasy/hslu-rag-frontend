@@ -348,7 +348,7 @@ export const useMaterialStore = create<MaterialState>((set, get) => ({
     }
   },
   
-  getProcessingStatus: async (materialId) => {
+  getProcessingStatus: async (materialId: string) => {
     try {
       const status = await materialService.getProcessingStatus(materialId);
       
@@ -366,12 +366,12 @@ export const useMaterialStore = create<MaterialState>((set, get) => ({
     }
   },
   
-  trackProcessingStatus: async (materialId) => {
+  trackProcessingStatus: async (materialId: string) => {
     try {
       // Initial status check
       const status = await get().getProcessingStatus(materialId);
       
-      // If not yet completed, poll every 5 seconds
+      // If not yet completed, poll every 3 seconds
       if (status.status === 'processing') {
         const interval = setInterval(async () => {
           try {
@@ -399,10 +399,10 @@ export const useMaterialStore = create<MaterialState>((set, get) => ({
             console.error(`Error polling status for material ${materialId}:`, error);
             clearInterval(interval); // Stop polling on error
           }
-        }, 5000);
+        }, 3000);
         
-        // Clear interval after 5 minutes as a safety measure
-        setTimeout(() => clearInterval(interval), 5 * 60 * 1000);
+        // Clear interval after 10 minutes as a safety measure
+        setTimeout(() => clearInterval(interval), 10 * 60 * 1000);
       }
     } catch (error) {
       console.error('Error tracking processing status:', error);

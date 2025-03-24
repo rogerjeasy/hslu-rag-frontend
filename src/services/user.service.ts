@@ -57,12 +57,16 @@ class UserService {
   /**
    * Update user role - admin only
    */
-  async updateUserRole(userId: string, role: UserRole): Promise<void> {
+  async updateUserRole(userId: string, roles: UserRole[]): Promise<void> {
+    if (!userId) {
+      throw new Error('User ID is required to update roles');
+    }
+    
     try {
-      await api.put(`/auth/admin/users/${userId}/role`, { role });
+      await api.put(`/auth/admin/users/${userId}/roles`, { roles });
     } catch (error) {
       const errorMessage = handleError(error);
-      throw new Error(`Failed to update user role: ${errorMessage}`);
+      throw new Error(`Failed to update user roles: ${errorMessage}`);
     }
   }
 

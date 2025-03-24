@@ -1,29 +1,87 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Menu, X, BookOpen, Settings, Loader2, ChevronUp, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import SubjectSelector from './SubjectSelector';
 import ModelSelector from './ModelSelector';
-import { ChatHeaderProps, Subject, AIModel } from '@/types/chat';
+import { AIModel } from '@/types/chat';
 import { cn } from '@/lib/utils';
+import FallbackCourseSelector from './FallbackCourseSelector';
+import { Course } from '@/types/course.types';
+import { useCourseStore } from '@/store/courseStore';
+import { QueryType } from '@/types/query';
+import { useConversationStore } from '@/store/conversationStore';
+
+// Update the Props interface
+interface ChatHeaderProps {
+  course: Course | null;
+  model: AIModel | null;
+  onCourseChange: (course: Course) => void;
+  onModelChange: (model: AIModel | null) => void;
+  onToggleSidebar: () => void;
+  isLoading?: boolean;
+  sidebarVisible?: boolean;
+}
 
 export default function ChatHeader({ 
-  subject, 
+  course, 
   model, 
-  onSubjectChange, 
+  onCourseChange, 
   onModelChange, 
   onToggleSidebar,
   isLoading = false,
   sidebarVisible = false
 }: ChatHeaderProps) {
-  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [models, setModels] = useState<AIModel[]>([]);
   const [showSettings, setShowSettings] = useState(false);
-  const [isLoadingData, setIsLoadingData] = useState(true);
+  const [isLoadingModels, setIsLoadingModels] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [isTablet, setIsTablet] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Get stores
+  const courseStore = useCourseStore();
+  const conversationStore = useConversationStore();
+  
+  // Get loading states
+  const isLoadingCourses = courseStore.isLoading;
+  const isLoadingConversations = conversationStore.isLoading;
+
+  // Combined loading state
+  const isAnyLoading = isLoading || isLoadingModels || isLoadingCourses || isLoadingConversations;
+
+  // Safe course change handler
+  const handleCourseChange = useCallback((newCourse: Course) => {
+    try {
+      if (typeof onCourseChange === 'function') {
+        onCourseChange(newCourse);
+        
+        // Also filter conversations by this course
+        conversationStore.setSelectedCourse(newCourse.id);
+        conversationStore.applyFilters();
+      } else {
+        setError("Course change handler is not available");
+      }
+    } catch (err) {
+      console.error("Error in course change:", err);
+      setError("Failed to change course");
+    }
+  }, [onCourseChange, conversationStore]);
+
+  // Safe model change handler
+  const handleModelChange = useCallback((newModel: AIModel | null) => {
+    try {
+      if (typeof onModelChange === 'function') {
+        onModelChange(newModel);
+      } else {
+        setError("Model change handler is not available");
+      }
+    } catch (err) {
+      console.error("Error in model change:", err);
+      setError("Failed to change model");
+    }
+  }, [onModelChange]);
 
   // Check viewport width for responsive adjustments
   useEffect(() => {
@@ -45,23 +103,17 @@ export default function ChatHeader({
     };
   }, []);
 
-  // Fetch subjects and models data
+  // Fetch models data (still using mock data for now)
   useEffect(() => {
-    const fetchData = async () => {
-      setIsLoadingData(true);
+    const fetchModels = async () => {
+      setIsLoadingModels(true);
+      setError(null);
       
       try {
         // Simulate API fetch with small delay
         await new Promise(resolve => setTimeout(resolve, 500));
         
         // Mock data - replace with actual API calls
-        const mockSubjects: Subject[] = [
-          { id: '1', name: 'Classical Statistics', icon: '📊' },
-          { id: '2', name: 'Design of Data Experiment', icon: '🧪' },
-          { id: '3', name: 'Python for Data Science', icon: '🐍' },
-          { id: '4', name: 'Discrete response, time series and panel data', icon: '📈' },
-        ];
-
         const mockModels: AIModel[] = [
           { 
             id: '1', 
@@ -83,29 +135,32 @@ export default function ChatHeader({
           }
         ];
 
-        setSubjects(mockSubjects);
         setModels(mockModels);
 
-        // Set default values if none selected
-        if (!subject && mockSubjects.length) {
-          onSubjectChange(mockSubjects[0]);
-        }
+        // Set default model if none selected
         if (!model && mockModels.length) {
-          onModelChange(mockModels[0]);
+          handleModelChange(mockModels[0]);
         }
-      } catch (error) {
-        console.error('Error fetching data:', error);
+      } catch (err) {
+        console.error('Error fetching models:', err);
+        setError("Failed to load models");
       } finally {
-        setIsLoadingData(false);
+        setIsLoadingModels(false);
       }
     };
 
-    fetchData();
-  }, [onModelChange, onSubjectChange, model, subject]);
+    fetchModels();
+  }, [model, handleModelChange]);
 
   // Toggle settings panel
   const toggleSettings = () => {
     setShowSettings(!showSettings);
+  };
+
+  // Handle query type selection
+  const handleQueryTypeChange = (type: QueryType) => {
+    conversationStore.setSelectedQueryType(type);
+    conversationStore.applyFilters();
   };
 
   return (
@@ -115,15 +170,20 @@ export default function ChatHeader({
       mounted ? "opacity-100" : "opacity-0",
       showSettings ? "shadow-sm" : ""
     )}>
+      {error && (
+        <div className="bg-destructive/10 text-destructive text-xs p-2 text-center">
+          Error: {error}
+        </div>
+      )}
       <div className="flex flex-wrap items-center justify-between p-2 sm:p-3 md:p-4 gap-2">
-        {/* Left section - Sidebar toggle & Subject */}
+        {/* Left section - Sidebar toggle & Course selector */}
         <div className="flex items-center gap-2 flex-shrink-0">
           <Button 
             variant="ghost" 
             size="icon" 
             onClick={onToggleSidebar}
             title={sidebarVisible ? "Hide sidebar" : "Show sidebar"}
-            disabled={isLoading}
+            disabled={isAnyLoading}
             className={cn(
               "h-8 w-8 sm:h-9 sm:w-9 rounded-full transition-all duration-300",
               "hover:bg-primary/10",
@@ -140,18 +200,22 @@ export default function ChatHeader({
           </Button>
 
           <div className="flex items-center gap-1 sm:gap-2 min-w-0">
-            {isLoadingData ? (
+            {isLoadingCourses ? (
               <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 text-primary animate-spin flex-shrink-0" />
             ) : (
               <BookOpen className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
             )}
             
-            <SubjectSelector 
-              selectedSubject={subject}
-              onSubjectChange={onSubjectChange}
-              subjects={subjects}
-              isLoading={isLoadingData || isLoading}
-            />
+            {/* Use the Fallback CourseSelector instead */}
+            <div className="w-40 sm:w-56 lg:w-64">
+              <FallbackCourseSelector 
+                selectedCourse={course}
+                onCourseChange={handleCourseChange}
+                disabled={isAnyLoading}
+                placeholder="Select a course..."
+                courses={courseStore.courses}
+              />
+            </div>
           </div>
         </div>
 
@@ -160,9 +224,9 @@ export default function ChatHeader({
           {!isMobile && (
             <ModelSelector 
               selectedModel={model}
-              onModelChange={onModelChange}
-              models={models}
-              isLoading={isLoadingData || isLoading}
+              onModelChange={handleModelChange}
+              models={models || []}
+              isLoading={isAnyLoading}
             />
           )}
 
@@ -171,7 +235,7 @@ export default function ChatHeader({
             size="icon" 
             onClick={toggleSettings}
             title={showSettings ? "Close settings" : "Open settings"}
-            disabled={isLoading}
+            disabled={isAnyLoading}
             className={cn(
               "h-8 w-8 sm:h-9 sm:w-9 rounded-full transition-all duration-300",
               "hover:bg-primary/10",
@@ -192,9 +256,9 @@ export default function ChatHeader({
           <div className="w-full mt-1.5 transition-all duration-300">
             <ModelSelector 
               selectedModel={model}
-              onModelChange={onModelChange}
-              models={models}
-              isLoading={isLoadingData || isLoading}
+              onModelChange={handleModelChange}
+              models={models || []}
+              isLoading={isAnyLoading}
             />
           </div>
         )}
@@ -215,6 +279,28 @@ export default function ChatHeader({
           </div>
           
           <div className="space-y-3 sm:space-y-4">
+            {/* Query Type Selection */}
+            <div className="space-y-2">
+              <label className="text-xs font-medium" htmlFor="query-type">
+                Conversation Mode
+              </label>
+              <select 
+                id="query-type" 
+                className={cn(
+                  "w-full border rounded-md p-1.5 sm:p-2 bg-background text-xs sm:text-sm",
+                  "focus:border-primary/30 focus:ring focus:ring-primary/10 transition-all duration-200"
+                )}
+                disabled={isAnyLoading}
+                onChange={(e) => handleQueryTypeChange(e.target.value as QueryType)}
+                value={conversationStore.selectedQueryType || QueryType.QUESTION_ANSWERING}
+              >
+                <option value={QueryType.QUESTION_ANSWERING}>Question Answering</option>
+                <option value={QueryType.KNOWLEDGE_GAP}>Knowledge Gap Analysis</option>
+                <option value={QueryType.PRACTICE_QUESTIONS}>Practice Questions</option>
+                <option value={QueryType.STUDY_GUIDE}>Study Guide</option>
+              </select>
+            </div>
+            
             {/* Settings grid - Two columns on larger screens */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
@@ -227,7 +313,7 @@ export default function ChatHeader({
                     "w-full border rounded-md p-1.5 sm:p-2 bg-background text-xs sm:text-sm",
                     "focus:border-primary/30 focus:ring focus:ring-primary/10 transition-all duration-200"
                   )}
-                  disabled={isLoading}
+                  disabled={isAnyLoading}
                 >
                   <option value="4">Last 4 messages</option>
                   <option value="8">Last 8 messages</option>
@@ -246,7 +332,7 @@ export default function ChatHeader({
                     "w-full border rounded-md p-1.5 sm:p-2 bg-background text-xs sm:text-sm",
                     "focus:border-primary/30 focus:ring focus:ring-primary/10 transition-all duration-200"
                   )}
-                  disabled={isLoading}
+                  disabled={isAnyLoading}
                 >
                   <option value="inline">Inline Citations</option>
                   <option value="footnote">Footnotes</option>
@@ -265,7 +351,7 @@ export default function ChatHeader({
                     "rounded border-border h-3.5 w-3.5 sm:h-4 sm:w-4",
                     "text-primary focus:ring-primary/20 transition-all duration-200"
                   )}
-                  disabled={isLoading}
+                  disabled={isAnyLoading}
                 />
                 <label className="text-xs font-medium" htmlFor="include-formulas">
                   Include Mathematical Formulas
@@ -280,7 +366,7 @@ export default function ChatHeader({
                     "rounded border-border h-3.5 w-3.5 sm:h-4 sm:w-4",
                     "text-primary focus:ring-primary/20 transition-all duration-200"
                   )}
-                  disabled={isLoading}
+                  disabled={isAnyLoading}
                 />
                 <label className="text-xs font-medium" htmlFor="include-code">
                   Include Code Examples
@@ -295,7 +381,7 @@ export default function ChatHeader({
                     "rounded border-border h-3.5 w-3.5 sm:h-4 sm:w-4",
                     "text-primary focus:ring-primary/20 transition-all duration-200"
                   )}
-                  disabled={isLoading}
+                  disabled={isAnyLoading}
                 />
                 <label className="text-xs font-medium" htmlFor="use-images">
                   Include Diagrams and Images
@@ -313,7 +399,7 @@ export default function ChatHeader({
                   "w-full border rounded-md p-1.5 sm:p-2 bg-background text-xs sm:text-sm",
                   "focus:border-primary/30 focus:ring focus:ring-primary/10 transition-all duration-200"
                 )}
-                disabled={isLoading}
+                disabled={isAnyLoading}
               >
                 <option value="concise">Concise</option>
                 <option value="balanced">Balanced</option>
@@ -324,7 +410,7 @@ export default function ChatHeader({
           </div>
           
           <div className="flex justify-end mt-3 sm:mt-4">
-            {isLoading ? (
+            {isAnyLoading ? (
               <Button 
                 size="sm" 
                 variant="outline" 

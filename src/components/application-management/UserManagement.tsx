@@ -57,28 +57,55 @@ function UserManagementContent() {
   }
 
   const handleChangeRole = useCallback((user: User) => {
-    setUserToUpdateRole(user)
-  }, [])
+    
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "Cannot update roles: User is null or undefined",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (typeof user !== 'object') {
+      toast({
+        title: "Error",
+        description: "Cannot update roles: Invalid user type",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!user.id) {
+      toast({
+        title: "Error",
+        description: "Cannot update roles: User has no ID",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setUserToUpdateRole(user);
+  }, [toast]);
 
-  const handleRoleUpdate = useCallback(async (role: UserRole) => {
+  const handleRoleUpdate = useCallback(async (roles: UserRole[]) => {
     if (!userToUpdateRole) return
     
     try {
       setIsSubmitting(true)
       
-      await updateUserRole(userToUpdateRole.uid, role)
+      await updateUserRole(userToUpdateRole.id, roles)
       
       setUserToUpdateRole(null)
       
       toast({
-        title: "Role updated",
-        description: `User role has been updated successfully.`,
+        title: "Roles updated",
+        description: `User roles have been updated successfully.`,
       })
     } catch (error) {
-      console.error('Role update error:', error)
       toast({
         title: "Update Failed",
-        description: error instanceof Error ? error.message : "There was an error updating the user role.",
+        description: error instanceof Error ? error.message : "There was an error updating the user roles.",
         variant: "destructive"
       })
     } finally {
@@ -141,7 +168,7 @@ function UserManagementContent() {
                   System Users
                 </CardTitle>
                 <CardDescription>
-                  Manage user accounts and assign roles
+                  Manage user accounts and assign multiple roles
                 </CardDescription>
               </div>
             </div>

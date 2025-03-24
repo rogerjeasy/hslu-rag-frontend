@@ -103,10 +103,10 @@ export function MobileNav() {
       active: pathname === "/chat",
     },
     {
-      href: "/practice",
+      href: "/practice-questions",
       label: "Practice Questions",
       icon: LucideSchool,
-      active: pathname === "/practice",
+      active: pathname === "/practice-questions",
     },
   ]
   
