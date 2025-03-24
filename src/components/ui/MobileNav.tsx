@@ -20,20 +20,83 @@ import {
   Settings,
   X,
   LucideLayoutDashboard,
-  LucideMessageSquare,
-  LucideStar,
   LucideHome,
   LucideHelpCircle,
-  LucideBookOpen,
-  LucideSchool
+  LucideSchool,
+  Sparkles,
+  Brain,
+  BookOpen,
+  BarChart3,
+  MessagesSquare,
+  Users
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { VisuallyHidden } from "@/components/ui/visually-hidden"
 import { useUserStore, useLogout } from "@/store/userStore" // Import Zustand store and useLogout hook
 
+// Define interfaces for feature and route types
+interface Feature {
+  title: string;
+  href: string;
+  description: string;
+  icon: React.ReactNode;
+  highlight?: boolean;
+}
+
+interface Route {
+  href: string;
+  label: string;
+  icon: React.ReactNode;
+  active: boolean;
+  hasSubmenu?: boolean;
+  onClick?: () => void;
+}
+
+// Feature mapping with appropriate icons
+const features: Feature[] = [
+  {
+    title: "AI Study Assistant",
+    href: "/chat",
+    description: "Get instant, accurate answers to your questions based on official HSLU course materials.",
+    icon: <MessagesSquare className="h-5 w-5" />,
+    highlight: true,
+  },
+  {
+    title: "Study Guide Generator",
+    href: "/study-guides",
+    description: "Create personalized exam preparation summaries and structured study plans.",
+    icon: <BookOpen className="h-5 w-5" />,
+  },
+  {
+    title: "Practice Assessment",
+    href: "/practice-questions",
+    description: "Test your knowledge with course-specific practice questions and detailed explanations.",
+    icon: <LucideSchool className="h-5 w-5" />,
+  },
+  {
+    title: "Knowledge Analytics",
+    href: "/knowledge-gap",
+    description: "Identify your knowledge gaps with AI-powered learning analytics and targeted recommendations.",
+    icon: <BarChart3 className="h-5 w-5" />,
+  },
+  {
+    title: "Concept Explorer",
+    href: "/materials",
+    description: "Master complex data science concepts through interactive explanations and practical examples.",
+    icon: <Brain className="h-5 w-5" />,
+  },
+  {
+    title: "Collaborative Learning",
+    href: "/groups",
+    description: "Form study groups, share resources, and learn collaboratively with your classmates.",
+    icon: <Users className="h-5 w-5" />,
+  },
+]
+
 export function MobileNav() {
   const [open, setOpen] = useState(false)
+  const [featuresExpanded, setFeaturesExpanded] = useState(false)
   const pathname = usePathname()
   
   // Get user state from Zustand store
@@ -61,67 +124,51 @@ export function MobileNav() {
   }
   
   // Routes accessible to all users (public)
-  const publicRoutes = [
+  const publicRoutes: Route[] = [
     {
       href: "/",
       label: "Home",
-      icon: LucideHome,
+      icon: <LucideHome className="h-5 w-5" />,
       active: pathname === "/",
     },
     {
       href: "/features",
-      label: "Features",
-      icon: LucideStar,
+      label: "AI Learning Hub",
+      icon: <Sparkles className="h-5 w-5" />,
       active: pathname === "/features",
+      hasSubmenu: true,
+      onClick: () => setFeaturesExpanded(!featuresExpanded)
     },
     {
       href: "/about-us",
       label: "About Us",
-      icon: LucideHelpCircle,
+      icon: <LucideHelpCircle className="h-5 w-5" />,
       active: pathname === "/about-us",
     },
   ]
   
   // Routes accessible only to authenticated users
-  const authenticatedRoutes = [
+  const authenticatedRoutes: Route[] = [
     {
       href: "/dashboard",
       label: "Dashboard",
-      icon: LucideLayoutDashboard,
+      icon: <LucideLayoutDashboard className="h-5 w-5" />,
       active: pathname === "/dashboard",
-    },
-    {
-      href: "/courses",
-      label: "Courses",
-      icon: LucideBookOpen,
-      active: pathname.includes("/courses"),
-    },
-    {
-      href: "/chat",
-      label: "Chat Assistant",
-      icon: LucideMessageSquare,
-      active: pathname === "/chat",
-    },
-    {
-      href: "/practice-questions",
-      label: "Practice Questions",
-      icon: LucideSchool,
-      active: pathname === "/practice-questions",
     },
   ]
   
   // Admin-only routes
-  const adminRoutes = isAdmin ? [
+  const adminRoutes: Route[] = isAdmin ? [
     {
       href: "/application-management",
       label: "Application Management",
-      icon: Settings,
+      icon: <Settings className="h-5 w-5" />,
       active: pathname === "/application-management",
     }
   ] : []
   
   // Active routes based on authentication status and admin role
-  const routes = isAuthenticated 
+  const routes: Route[] = isAuthenticated 
     ? [...publicRoutes, ...authenticatedRoutes, ...adminRoutes]
     : publicRoutes
  
@@ -133,7 +180,7 @@ export function MobileNav() {
           <span className="sr-only">Toggle menu</span>
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-[280px] sm:w-[320px] p-0 border-r-muted">
+      <SheetContent side="left" className="w-[280px] sm:w-[320px] p-0 border-r-muted overflow-y-auto">
         <SheetHeader className="border-b p-4 text-left">
           {/* Adding SheetTitle for accessibility */}
           <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
@@ -198,28 +245,78 @@ export function MobileNav() {
             <AnimatePresence>
               {routes.map((route, index) => (
                 <motion.div
-                  key={route.href}
+                  key={route.href + (route.hasSubmenu ? '-submenu' : '')}
                   initial={{ opacity: 0, y: -5 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05, duration: 0.15 }}
                 >
-                  <Link
-                    href={route.href}
-                    onClick={() => setOpen(false)}
-                    className={cn(
-                      "flex items-center rounded-md px-3 py-2.5 text-sm font-medium transition-all",
-                      route.active
-                        ? "bg-primary/10 text-primary font-semibold"
-                        : "hover:bg-accent hover:text-accent-foreground"
-                    )}
-                    aria-current={route.active ? "page" : undefined}
-                  >
-                    <route.icon className={cn(
-                      "mr-3 h-5 w-5",
-                      route.active ? "text-primary" : "text-foreground opacity-70"
-                    )} aria-hidden="true" />
-                    {route.label}
-                  </Link>
+                  {route.hasSubmenu ? (
+                    <div>
+                      <button
+                        onClick={route.onClick}
+                        className={cn(
+                          "flex items-center w-full justify-between rounded-md px-3 py-2.5 text-sm font-medium transition-all",
+                          route.active
+                            ? "bg-primary/10 text-primary font-semibold"
+                            : "hover:bg-accent hover:text-accent-foreground"
+                        )}
+                      >
+                        <div className="flex items-center">
+                          {route.icon}
+                          <span className="ml-3">{route.label}</span>
+                        </div>
+                        <svg
+                          className={`h-4 w-4 transition-transform ${featuresExpanded ? 'rotate-180' : ''}`}
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                      
+                      {featuresExpanded && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="pl-10 mt-1 space-y-1"
+                        >
+                          {features.map((feature) => (
+                            <Link
+                              key={feature.href}
+                              href={feature.href}
+                              onClick={() => setOpen(false)}
+                              className={cn(
+                                "flex items-center rounded-md px-3 py-2 text-sm transition-all",
+                                pathname === feature.href
+                                  ? "bg-primary/5 text-primary font-medium"
+                                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                              )}
+                            >
+                              {feature.icon}
+                              <span className="ml-3">{feature.title}</span>
+                            </Link>
+                          ))}
+                        </motion.div>
+                      )}
+                    </div>
+                  ) : (
+                    <Link
+                      href={route.href}
+                      onClick={() => setOpen(false)}
+                      className={cn(
+                        "flex items-center rounded-md px-3 py-2.5 text-sm font-medium transition-all",
+                        route.active
+                          ? "bg-primary/10 text-primary font-semibold"
+                          : "hover:bg-accent hover:text-accent-foreground"
+                      )}
+                      aria-current={route.active ? "page" : undefined}
+                    >
+                      {route.icon}
+                      <span className="ml-3">{route.label}</span>
+                    </Link>
+                  )}
                 </motion.div>
               ))}
             </AnimatePresence>

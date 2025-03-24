@@ -4,24 +4,7 @@ import { create } from "zustand";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/helpers/api";
-
-// User interfaces remain the same
-export interface User {
-  uid: string;
-  username: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  profilePicture: string;
-  bio: string;
-  role: string[];
-  graduationYear: number;
-  interests: string[];
-  accountCreatedAt: string;
-  isActive: boolean;
-  program: string;
-  languages: string[];
-}
+import { User } from "@/types/user.types";
 
 interface UserState {
   user: User | null;

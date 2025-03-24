@@ -9,14 +9,6 @@ export enum DetailLevel {
   COMPREHENSIVE = "comprehensive"
 }
 
-export enum StudyGuideFormat {
-  OUTLINE = "outline",
-  NOTES = "notes",
-  FLASHCARDS = "flashcards",
-  MIND_MAP = "mind_map",
-  SUMMARY = "summary"
-}
-
 export interface StudyGuideSection {
   title: string;
   content: string;
@@ -34,10 +26,14 @@ export interface StudyGuide {
   description?: string;
   courseId: string;
   moduleId?: string;
+  type?: GuideType;
   topicId?: string;
   userId: string;
   createdAt: string;
   updatedAt: string;
+  progress: number;
+  estimatedTime: number;
+  lastStudied?: string;
   detailLevel: DetailLevel;
   format: StudyGuideFormat;
   sections: StudyGuideSection[];
@@ -64,3 +60,17 @@ export interface StudyGuideCreateResponse {
   courseId: string;
   createdAt: string;
 }
+
+export enum StudyGuideFormat {
+  OUTLINE = "outline",
+  NOTES = "notes",
+  FLASHCARDS = "flashcards",
+  MIND_MAP = "mind_map",
+  SUMMARY = "summary"
+}
+
+
+export type GuideType = 'summary' | 'concept' | 'practice' | 'flashcard' | "outline" | "notes" | "flashcards" | "mind_map";
+export type ViewMode = 'grid' | 'list';
+export type SortOption = 'recent' | 'priority' | 'progress' | 'name';
+export type TabView = 'all' | 'recent' | 'recommended';

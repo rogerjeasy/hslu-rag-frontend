@@ -6,7 +6,8 @@ import {
   StudyGuideCreateResponse,
   DetailLevel,
   StudyGuideFormat,
-  StudyGuideSection
+  StudyGuideSection,
+  GuideType
 } from '@/types/study-guide';
 
 /**
@@ -31,13 +32,66 @@ interface StudyGuideUpdateRequest {
   description?: string;
 }
 
+/**
+ * Backend response interfaces to match the API
+ */
+interface BackendStudyGuide {
+  id: string;
+  title: string;
+  description?: string;
+  course_id: string;
+  module_id?: string;
+  topic_id?: string;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+  detail_level: DetailLevel;
+  format: StudyGuideFormat;
+  sections: BackendStudyGuideSection[];
+  citations: BackendCitation[];
+  metadata?: Record<string, unknown>;
+}
+
+interface BackendStudyGuideSection {
+  title: string;
+  content: string;
+  order: number;
+  citations: BackendCitation[];
+  sub_sections: BackendStudyGuideSection[];
+}
+
+interface BackendCitation {
+  source: string;
+  text: string;
+  document_id?: string;
+  url?: string;
+  material_id?: string;
+  title?: string;
+  chunk_index?: number;
+  content_preview?: string;
+}
+
+interface BackendStudyGuideSummary {
+  id: string;
+  title: string;
+  course_id: string;
+  module_id?: string;
+  topic_id?: string;
+  created_at: string;
+  updated_at: string;
+  detail_level: DetailLevel;
+  format: StudyGuideFormat;
+  section_count: number;
+}
+
 class StudyGuideService {
   /**
    * Create a new study guide
    */
   async createStudyGuide(data: StudyGuideRequest): Promise<StudyGuideCreateResponse> {
+    console.log("data creating study guide:", data);
     try {
-      const response = await api.post('/study-guides', data);
+      const response = await api.post<StudyGuideCreateResponse>('/study-guides', data);
       return response.data;
     } catch (error) {
       const errorMessage = handleError(error);
@@ -55,8 +109,10 @@ class StudyGuideService {
         ? `/study-guides?course_id=${courseId}` 
         : '/study-guides';
       
-      const response = await api.get(url);
-      return response.data;
+      const response = await api.get<BackendStudyGuideSummary[]>(url);
+      
+      // Transform each guide to match frontend model
+      return response.data.map(guide => this.transformToStudyGuideSummary(guide));
     } catch (error) {
       const errorMessage = handleError(error);
       throw new Error(`Failed to fetch study guides: ${errorMessage}`);
@@ -68,8 +124,8 @@ class StudyGuideService {
    */
   async getStudyGuide(guideId: string): Promise<StudyGuide> {
     try {
-      const response = await api.get(`/study-guides/${guideId}`);
-      return response.data;
+      const response = await api.get<BackendStudyGuide>(`/study-guides/${guideId}`);
+      return this.transformToStudyGuide(response.data);
     } catch (error) {
       const errorMessage = handleError(error);
       throw new Error(`Failed to fetch study guide: ${errorMessage}`);
@@ -84,8 +140,8 @@ class StudyGuideService {
     data: StudyGuideUpdateRequest
   ): Promise<StudyGuide> {
     try {
-      const response = await api.put(`/study-guides/${guideId}`, data);
-      return response.data;
+      const response = await api.put<BackendStudyGuide>(`/study-guides/${guideId}`, data);
+      return this.transformToStudyGuide(response.data);
     } catch (error) {
       const errorMessage = handleError(error);
       throw new Error(`Failed to update study guide: ${errorMessage}`);
@@ -216,6 +272,78 @@ class StudyGuideService {
     getCitationsFromSections(studyGuide.sections);
     
     return citationsList;
+  }
+
+  /**
+   * Transform the backend data to match frontend StudyGuide model
+   */
+  private transformToStudyGuide(backendGuide: BackendStudyGuide): StudyGuide {
+    return {
+      id: backendGuide.id,
+      title: backendGuide.title,
+      description: backendGuide.description,
+      courseId: backendGuide.course_id,
+      moduleId: backendGuide.module_id,
+      topicId: backendGuide.topic_id,
+      userId: backendGuide.user_id,
+      createdAt: backendGuide.created_at,
+      updatedAt: backendGuide.updated_at,
+      progress: 0, // Default value or calculate based on sections
+      estimatedTime: 30, // Default value in minutes
+      detailLevel: backendGuide.detail_level,
+      format: backendGuide.format,
+      type: backendGuide.format as GuideType, // Use format as type
+      sections: this.transformSections(backendGuide.sections),
+      citations: this.transformCitations(backendGuide.citations),
+      metadata: backendGuide.metadata
+    };
+  }
+
+  /**
+   * Transform backend sections to frontend format
+   */
+  private transformSections(backendSections: BackendStudyGuideSection[]): StudyGuideSection[] {
+    return backendSections.map(section => ({
+      title: section.title,
+      content: section.content,
+      order: section.order,
+      citations: this.transformCitations(section.citations),
+      subSections: this.transformSections(section.sub_sections)
+    }));
+  }
+
+/**
+ * Transform backend citations to frontend format
+ */
+private transformCitations(backendCitations: BackendCitation[]): Citation[] {
+  return backendCitations.map(citation => ({
+    source: citation.source,
+    text: citation.text,
+    documentId: citation.document_id,
+    url: citation.url,
+    materialId: citation.document_id || '', 
+    title: citation.source, 
+    chunkIndex: 0, // Default value
+    contentPreview: citation.text.substring(0, 100) 
+  }));
+}
+
+  /**
+   * Transform the backend data to match frontend StudyGuideSummary model
+   */
+  private transformToStudyGuideSummary(backendSummary: BackendStudyGuideSummary): StudyGuideSummary {
+    return {
+      id: backendSummary.id,
+      title: backendSummary.title,
+      courseId: backendSummary.course_id,
+      moduleId: backendSummary.module_id,
+      topicId: backendSummary.topic_id,
+      createdAt: backendSummary.created_at,
+      updatedAt: backendSummary.updated_at,
+      detailLevel: backendSummary.detail_level,
+      format: backendSummary.format,
+      sectionCount: backendSummary.section_count
+    };
   }
 }
 

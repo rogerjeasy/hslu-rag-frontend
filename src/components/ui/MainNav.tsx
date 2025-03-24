@@ -17,30 +17,43 @@ import { motion } from "framer-motion"
 import React from "react"
 import { useUserStore } from "@/store/userStore" // Import Zustand store
 
-const courses = [
+const features = [
   {
-    title: "Data Mining",
-    href: "/courses/data-mining",
-    description: "Advanced techniques for data extraction and analysis.",
+    title: "AI Study Assistant",
+    href: "/chat",
+    description: "Get instant, accurate answers to your questions based on official HSLU course materials.",
+    icon: "💬",
+    highlight: true,
+  },
+  {
+    title: "Study Guide Generator",
+    href: "/study-guides",
+    description: "Create personalized exam preparation summaries and structured study plans.",
+    icon: "📚",
+  },
+  {
+    title: "Practice Assessment",
+    href: "/practice-questions",
+    description: "Test your knowledge with course-specific practice questions and detailed explanations.",
+    icon: "✓",
+  },
+  {
+    title: "Knowledge Analytics",
+    href: "/knowledge-gaps",
+    description: "Identify your knowledge gaps with AI-powered learning analytics and targeted recommendations.",
     icon: "📊",
   },
   {
-    title: "Machine Learning",
-    href: "/courses/machine-learning",
-    description: "Algorithms and statistical models for computer systems.",
+    title: "Concept Explorer",
+    href: "/materials",
+    description: "Master complex data science concepts through interactive explanations and practical examples.",
     icon: "🧠",
   },
   {
-    title: "Big Data",
-    href: "/courses/big-data",
-    description: "Processing and analyzing large datasets.",
-    icon: "📈",
-  },
-  {
-    title: "Statistics",
-    href: "/courses/statistics",
-    description: "Statistical methods for data science applications.",
-    icon: "📉",
+    title: "Collaborative Learning",
+    href: "/groups",
+    description: "Form study groups, share resources, and learn collaboratively with your classmates.",
+    icon: "👥",
   },
 ]
 
@@ -163,7 +176,7 @@ export function MainNav() {
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.97 }}
                 >
-                  Courses
+                  AI Learning Hub
                 </motion.div>
               </NavigationMenuTrigger>
               <NavigationMenuContent>
@@ -174,58 +187,19 @@ export function MainNav() {
                   transition={{ duration: 0.2 }}
                   className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]"
                 >
-                  {courses.map((course) => (
+                  {features.map((feature) => (
                     <ListItem
-                      key={course.title}
-                      title={course.title}
-                      href={course.href}
-                      icon={course.icon}
+                      key={feature.title}
+                      title={feature.title}
+                      href={feature.href}
+                      icon={feature.icon}
+                      className={feature.highlight ? "bg-primary/5 border-primary/20" : ""}
                     >
-                      {course.description}
+                      {feature.description}
                     </ListItem>
                   ))}
                 </motion.ul>
               </NavigationMenuContent>
-            </NavigationMenuItem>
-           
-            <NavigationMenuItem>
-              <Link href="/chat" passHref legacyBehavior>
-                <NavigationMenuLink 
-                  className={cn(
-                    navigationMenuTriggerStyle(),
-                    "bg-transparent transition-all duration-200 hover:bg-accent/50",
-                    pathname === "/chat" && "bg-accent/40 text-accent-foreground font-medium"
-                  )}
-                >
-                  <motion.div 
-                    className="flex items-center"
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
-                  >
-                    Chat Assistant
-                  </motion.div>
-                </NavigationMenuLink>
-              </Link>
-            </NavigationMenuItem>
-           
-            <NavigationMenuItem>
-              <Link href="/practice-questions" passHref legacyBehavior>
-                <NavigationMenuLink 
-                  className={cn(
-                    navigationMenuTriggerStyle(),
-                    "bg-transparent transition-all duration-200 hover:bg-accent/50",
-                    pathname === "/practice-questions" && "bg-accent/40 text-accent-foreground font-medium"
-                  )}
-                >
-                  <motion.div 
-                    className="flex items-center"
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
-                  >
-                    Practice
-                  </motion.div>
-                </NavigationMenuLink>
-              </Link>
             </NavigationMenuItem>
             
             {/* Admin-only navigation item */}
