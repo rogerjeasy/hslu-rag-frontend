@@ -20,8 +20,7 @@ function LoadingSkeleton() {
   );
 }
 
-
-export default function NewChatPage() {
+export default function ChatPage() {
   return (
     <main className="flex h-screen bg-slate-50 dark:bg-slate-900">
       <Suspense fallback={<LoadingSkeleton />}>

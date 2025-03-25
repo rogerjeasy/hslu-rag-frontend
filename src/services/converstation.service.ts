@@ -117,125 +117,125 @@ class ConversationService {
   /**
    * Start a study guide conversation
    */
-  async startStudyGuideConversation(
-    courseId: string,
-    topic: string,
-    detailLevel: 'basic' | 'medium' | 'comprehensive' = 'medium',
-    format: 'outline' | 'notes' | 'flashcards' | 'mind_map' | 'summary' = 'outline',
-    moduleId?: string,
-    topicId?: string
-  ): Promise<Conversation> {
-    try {
-      const data: ConversationCreateRequest = {
-        title: `Study Guide: ${topic}`,
-        courseId,
-        moduleId,
-        topicId,
-        initialMessage: topic
-      };
+  // async startStudyGuideConversation(
+  //   courseId: string,
+  //   topic: string,
+  //   detailLevel: 'basic' | 'medium' | 'comprehensive' = 'medium',
+  //   format: 'outline' | 'notes' | 'flashcards' | 'mind_map' | 'summary' = 'outline',
+  //   moduleId?: string,
+  //   topicId?: string
+  // ): Promise<Conversation> {
+  //   try {
+  //     const data: ConversationCreateRequest = {
+  //       title: `Study Guide: ${topic}`,
+  //       courseId,
+  //       moduleId,
+  //       topicId,
+  //       initialMessage: topic
+  //     };
 
-      // Create the conversation
-      const conversation = await this.createConversation(data);
+  //     // Create the conversation
+  //     const conversation = await this.createConversation(data);
 
-      // Send the initial message with the study guide query type
-      await this.sendMessage(
-        conversation.id,
-        topic,
-        QueryType.STUDY_GUIDE,
-        {
-          detailLevel,
-          format
-        }
-      );
+  //     // Send the initial message with the study guide query type
+  //     await this.sendMessage(
+  //       conversation.id,
+  //       topic,
+  //       QueryType.STUDY_GUIDE,
+  //       {
+  //         detailLevel,
+  //         format
+  //       }
+  //     );
 
-      return this.getConversation(conversation.id);
-    } catch (error) {
-      const errorMessage = handleError(error);
-      throw new Error(`Failed to start study guide conversation: ${errorMessage}`);
-    }
-  }
+  //     return this.getConversation(conversation.id);
+  //   } catch (error) {
+  //     const errorMessage = handleError(error);
+  //     throw new Error(`Failed to start study guide conversation: ${errorMessage}`);
+  //   }
+  // }
 
   /**
    * Start a practice questions conversation
    */
-  async startPracticeQuestionsConversation(
-    courseId: string,
-    topic: string,
-    questionCount: number = 5,
-    difficulty: 'basic' | 'medium' | 'advanced' = 'medium',
-    questionTypes: string[] = ['multiple_choice', 'short_answer'],
-    moduleId?: string,
-    topicId?: string
-  ): Promise<Conversation> {
-    try {
-      const data: ConversationCreateRequest = {
-        title: `Practice: ${topic}`,
-        courseId,
-        moduleId,
-        topicId,
-        initialMessage: topic
-      };
+  // async startPracticeQuestionsConversation(
+  //   courseId: string,
+  //   topic: string,
+  //   questionCount: number = 5,
+  //   difficulty: 'basic' | 'medium' | 'advanced' = 'medium',
+  //   questionTypes: string[] = ['multiple_choice', 'short_answer'],
+  //   moduleId?: string,
+  //   topicId?: string
+  // ): Promise<Conversation> {
+  //   try {
+  //     const data: ConversationCreateRequest = {
+  //       title: `Practice: ${topic}`,
+  //       courseId,
+  //       moduleId,
+  //       topicId,
+  //       initialMessage: topic
+  //     };
 
-      // Create the conversation
-      const conversation = await this.createConversation(data);
+  //     // Create the conversation
+  //     const conversation = await this.createConversation(data);
 
-      // Send the initial message with the practice questions query type
-      await this.sendMessage(
-        conversation.id,
-        topic,
-        QueryType.PRACTICE_QUESTIONS,
-        {
-          questionCount,
-          difficulty,
-          questionTypes
-        }
-      );
+  //     // Send the initial message with the practice questions query type
+  //     await this.sendMessage(
+  //       conversation.id,
+  //       topic,
+  //       QueryType.PRACTICE_QUESTIONS,
+  //       {
+  //         questionCount,
+  //         difficulty,
+  //         questionTypes
+  //       }
+  //     );
 
-      return this.getConversation(conversation.id);
-    } catch (error) {
-      const errorMessage = handleError(error);
-      throw new Error(`Failed to start practice questions conversation: ${errorMessage}`);
-    }
-  }
+  //     return this.getConversation(conversation.id);
+  //   } catch (error) {
+  //     const errorMessage = handleError(error);
+  //     throw new Error(`Failed to start practice questions conversation: ${errorMessage}`);
+  //   }
+  // }
 
-  /**
-   * Start a knowledge gap analysis conversation
-   */
-  async startKnowledgeGapConversation(
-    courseId: string,
-    topic: string,
-    pastInteractionsCount: number = 10,
-    moduleId?: string,
-    topicId?: string
-  ): Promise<Conversation> {
-    try {
-      const data: ConversationCreateRequest = {
-        title: `Knowledge Analysis: ${topic}`,
-        courseId,
-        moduleId,
-        topicId,
-        initialMessage: topic
-      };
+  // /**
+  //  * Start a knowledge gap analysis conversation
+  //  */
+  // async startKnowledgeGapConversation(
+  //   courseId: string,
+  //   topic: string,
+  //   pastInteractionsCount: number = 10,
+  //   moduleId?: string,
+  //   topicId?: string
+  // ): Promise<Conversation> {
+  //   try {
+  //     const data: ConversationCreateRequest = {
+  //       title: `Knowledge Analysis: ${topic}`,
+  //       courseId,
+  //       moduleId,
+  //       topicId,
+  //       initialMessage: topic
+  //     };
 
-      // Create the conversation
-      const conversation = await this.createConversation(data);
+  //     // Create the conversation
+  //     const conversation = await this.createConversation(data);
 
-      // Send the initial message with the knowledge gap query type
-      await this.sendMessage(
-        conversation.id,
-        topic,
-        QueryType.KNOWLEDGE_GAP,
-        {
-          pastInteractionsCount
-        }
-      );
+  //     // Send the initial message with the knowledge gap query type
+  //     await this.sendMessage(
+  //       conversation.id,
+  //       topic,
+  //       QueryType.KNOWLEDGE_GAP,
+  //       {
+  //         pastInteractionsCount
+  //       }
+  //     );
 
-      return this.getConversation(conversation.id);
-    } catch (error) {
-      const errorMessage = handleError(error);
-      throw new Error(`Failed to start knowledge gap conversation: ${errorMessage}`);
-    }
-  }
+  //     return this.getConversation(conversation.id);
+  //   } catch (error) {
+  //     const errorMessage = handleError(error);
+  //     throw new Error(`Failed to start knowledge gap conversation: ${errorMessage}`);
+  //   }
+  // }
 }
 
 // Export a singleton instance

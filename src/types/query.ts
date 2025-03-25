@@ -1,7 +1,6 @@
 /**
  * Updated types for queries and responses in the HSLU RAG application
  */
-
 export enum QueryType {
   QUESTION_ANSWERING = "question_answering",
   STUDY_GUIDE = "study_guide",
@@ -18,26 +17,42 @@ export interface Citation {
   fileUrl?: string;
 }
 
+// Base interface for all parameter types
+export interface BaseParams {
+  temperature?: number;
+  max_length?: number;
+}
+
 // Define specific types for additional parameters
-export type StudyGuideParams = {
-  detailLevel?: 'basic' | 'medium' | 'comprehensive';
+export interface StudyGuideParams extends BaseParams {
+  detail_level?: 'basic' | 'medium' | 'comprehensive';
   format?: 'outline' | 'notes' | 'flashcards' | 'mind_map' | 'summary';
-  includePracticeQuestions?: boolean;
-};
+  include_examples?: boolean;
+}
 
-export type PracticeQuestionsParams = {
-  questionCount?: number;
-  difficulty?: 'basic' | 'medium' | 'advanced';
-  questionTypes?: string[];
-};
+export interface QuestionAnsweringParams extends BaseParams {
+  include_citations?: boolean;
+}
 
-export type KnowledgeGapParams = {
-  pastInteractionsCount?: number;
-  includeSuggestions?: boolean;
-};
+export interface PracticeQuestionsParams extends BaseParams {
+  question_count?: number;
+  difficulty?: 'easy' | 'medium' | 'hard' | 'mixed';
+  question_types?: string[];
+  include_answers?: boolean;
+}
+
+export interface KnowledgeGapParams extends BaseParams {
+  past_interactions_count?: number;
+  detail_level?: 'basic' | 'medium' | 'detailed';
+  include_study_plan?: boolean;
+}
 
 // Union type for all parameter types
-export type AdditionalParams = StudyGuideParams | PracticeQuestionsParams | KnowledgeGapParams | Record<string, unknown>;
+export type AdditionalParams = 
+  | StudyGuideParams 
+  | QuestionAnsweringParams
+  | PracticeQuestionsParams 
+  | KnowledgeGapParams;
 
 export interface QueryRequest {
   text: string;
@@ -65,6 +80,11 @@ export interface StudyGuideQueryRequest extends QueryRequest {
   additionalParams: StudyGuideParams;
 }
 
+export interface QuestionAnsweringQueryRequest extends QueryRequest {
+  queryType: QueryType.QUESTION_ANSWERING;
+  additionalParams: QuestionAnsweringParams;
+}
+
 export interface PracticeQuestionsQueryRequest extends QueryRequest {
   queryType: QueryType.PRACTICE_QUESTIONS;
   additionalParams: PracticeQuestionsParams;
@@ -77,15 +97,29 @@ export interface KnowledgeGapQueryRequest extends QueryRequest {
 
 // Type guard functions to help with type checking
 export function isStudyGuideParams(params: AdditionalParams): params is StudyGuideParams {
-  return (params as StudyGuideParams).detailLevel !== undefined || 
-         (params as StudyGuideParams).format !== undefined;
+  return (
+    params.hasOwnProperty('detail_level') ||
+    params.hasOwnProperty('format') ||
+    params.hasOwnProperty('include_examples')
+  );
+}
+
+export function isQuestionAnsweringParams(params: AdditionalParams): params is QuestionAnsweringParams {
+  return params.hasOwnProperty('include_citations');
 }
 
 export function isPracticeQuestionsParams(params: AdditionalParams): params is PracticeQuestionsParams {
-  return (params as PracticeQuestionsParams).questionCount !== undefined || 
-         (params as PracticeQuestionsParams).questionTypes !== undefined;
+  return (
+    params.hasOwnProperty('question_count') ||
+    params.hasOwnProperty('difficulty') ||
+    params.hasOwnProperty('question_types') ||
+    params.hasOwnProperty('include_answers')
+  );
 }
 
 export function isKnowledgeGapParams(params: AdditionalParams): params is KnowledgeGapParams {
-  return (params as KnowledgeGapParams).pastInteractionsCount !== undefined;
+  return (
+    params.hasOwnProperty('past_interactions_count') ||
+    params.hasOwnProperty('include_study_plan')
+  );
 }

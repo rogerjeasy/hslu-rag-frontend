@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { MessageCircle, BookOpen, FileQuestion, BrainCircuit } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { QueryType } from '@/types/query';
 
 interface EmptyStateProps {
@@ -128,7 +127,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({ courseId, onStartConversation }
                     onClick={() => handlePromptClick(prompt, card.type)}
                     className="w-full text-left text-sm p-2 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                   >
-                    "{prompt}"
+                    &quot;{prompt}&quot;
                   </button>
                 ))}
               </div>

@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useState, useEffect } from 'react';
 import {
   Select,
@@ -9,128 +10,124 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 import { useCourseStore } from '@/store/courseStore';
+import { Loader2 } from 'lucide-react';
 
 interface SubjectSelectorProps {
-  courseId?: string;
-  onCourseChange?: (courseId: string) => void;
-  onModuleChange?: (moduleId: string) => void;
+  selectedCourse: string | null;
+  onSelectCourse: (courseId: string | null) => void;
+  className?: string;
 }
 
 const SubjectSelector: React.FC<SubjectSelectorProps> = ({
-  courseId,
-  onCourseChange,
-  onModuleChange
+  selectedCourse,
+  onSelectCourse,
+  className,
 }) => {
-  // Get courses from store
   const { 
     courses, 
-    fetchCourses, 
     isLoading, 
-    error 
+    error, 
+    fetchCourses 
   } = useCourseStore();
   
-  const [selectedCourse, setSelectedCourse] = useState<string | undefined>(courseId);
-  const [selectedModule, setSelectedModule] = useState<string | undefined>();
-  const [modules, setModules] = useState<Array<{ id: string, name: string }>>([]);
+  const [selectedModule, setSelectedModule] = useState<string | null>(null);
+  const [modules, setModules] = useState<{ id: string; name: string }[]>([]);
 
-  // Fetch courses when component mounts
+  // Fetch courses on mount
   useEffect(() => {
     fetchCourses();
   }, [fetchCourses]);
 
-  // Update selected course when courseId prop changes
+  // Reset selected module when course changes
   useEffect(() => {
-    setSelectedCourse(courseId);
-  }, [courseId]);
-
-  // Fetch modules when course changes
-  useEffect(() => {
-    const fetchModules = async () => {
-      if (selectedCourse) {
-        try {
-          // In a real application, you would fetch modules for the selected course
-          // For now, we'll use a placeholder array since the API endpoint isn't specified
-          // This would typically come from another API endpoint or be included in the course details
-          
-          // Placeholder - replace with actual API call
-          setModules([
-            { id: `${selectedCourse}-1`, name: 'Introduction' },
-            { id: `${selectedCourse}-2`, name: 'Core Concepts' },
-            { id: `${selectedCourse}-3`, name: 'Advanced Topics' },
-          ]);
-          
-          // Example of how you might fetch modules in a real application:
-          // const courseDetails = await useCourseStore.getState().getCourse(selectedCourse);
-          // setModules(courseDetails.modules);
-        } catch (error) {
-          console.error('Error fetching modules:', error);
-        }
-      } else {
-        setModules([]);
-      }
-    };
-
-    fetchModules();
+    setSelectedModule(null);
+    
+    // If we wanted to fetch modules for the selected course from an API
+    // we could do it here. For now, I'll simulate it with dummy data
+    if (selectedCourse) {
+      // This would be replaced with an actual API call in a real application
+      // For example: courseService.getCourseModules(selectedCourse)
+      const dummyModules = [
+        { id: `${selectedCourse}_module1`, name: 'Introduction' },
+        { id: `${selectedCourse}_module2`, name: 'Core Concepts' },
+        { id: `${selectedCourse}_module3`, name: 'Advanced Topics' },
+      ];
+      setModules(dummyModules);
+    } else {
+      setModules([]);
+    }
   }, [selectedCourse]);
 
   const handleCourseChange = (value: string) => {
-    setSelectedCourse(value);
-    setSelectedModule(undefined); // Reset module when course changes
-   
-    if (onCourseChange) {
-      onCourseChange(value);
-    }
+    onSelectCourse(value || null);
   };
 
   const handleModuleChange = (value: string) => {
-    setSelectedModule(value);
-   
-    if (onModuleChange) {
-      onModuleChange(value);
-    }
+    setSelectedModule(value || null);
   };
 
   return (
-    <div className="flex flex-col sm:flex-row gap-1 sm:gap-2">
-      {/* Course Selector */}
-      <Select value={selectedCourse} onValueChange={handleCourseChange} disabled={isLoading}>
-        <SelectTrigger className="w-full sm:w-40 h-8 text-xs">
-          <SelectValue placeholder={isLoading ? "Loading..." : "Select Course"} />
+    <div className={cn("space-y-3", className)}>
+      <Select 
+        value={selectedCourse || ""} 
+        onValueChange={handleCourseChange}
+        disabled={isLoading}
+      >
+        <SelectTrigger className="bg-white dark:bg-slate-800">
+          {isLoading ? (
+            <div className="flex items-center">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <span>Loading courses...</span>
+            </div>
+          ) : (
+            <SelectValue placeholder="Select a course" />
+          )}
         </SelectTrigger>
         <SelectContent>
-          {error ? (
-            <div className="p-2 text-sm text-red-500">Error loading courses</div>
-          ) : (
-            <SelectGroup>
-              <SelectLabel>Courses</SelectLabel>
-              {courses.map(course => (
-                <SelectItem key={course.id} value={course.id} className="text-sm">
+          <SelectGroup>
+            <SelectLabel>Courses</SelectLabel>
+            {courses.length > 0 ? (
+              courses.map(course => (
+                <SelectItem key={course.id} value={course.id}>
                   {course.name}
                 </SelectItem>
-              ))}
-            </SelectGroup>
-          )}
+              ))
+            ) : (
+              <div className="p-2 text-center text-sm text-slate-500">
+                {error ? 'Error loading courses' : 'No courses available'}
+              </div>
+            )}
+          </SelectGroup>
         </SelectContent>
       </Select>
 
-      {/* Module Selector - Only shown if a course is selected */}
       {selectedCourse && (
-        <Select value={selectedModule} onValueChange={handleModuleChange}>
-          <SelectTrigger className="w-full sm:w-48 h-8 text-xs">
-            <SelectValue placeholder="Select Module" />
+        <Select 
+          value={selectedModule || ""} 
+          onValueChange={handleModuleChange}
+        >
+          <SelectTrigger className="bg-white dark:bg-slate-800">
+            <SelectValue placeholder="Select a module (optional)" />
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
               <SelectLabel>Modules</SelectLabel>
               {modules.map(module => (
-                <SelectItem key={module.id} value={module.id} className="text-sm">
+                <SelectItem key={module.id} value={module.id}>
                   {module.name}
                 </SelectItem>
               ))}
             </SelectGroup>
           </SelectContent>
         </Select>
+      )}
+
+      {error && (
+        <div className="text-sm text-red-500 mt-1">
+          Error: {error}
+        </div>
       )}
     </div>
   );

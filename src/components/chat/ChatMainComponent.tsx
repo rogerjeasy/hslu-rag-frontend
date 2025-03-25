@@ -2,10 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
-import ChatContainer from '@/components/chat/ChatContainer';
 import { useUserStore } from '@/store/userStore';
 import { BookOpen } from 'lucide-react';
-import { LoadingSpinner } from '@/components/ui/loading-spinner'; // Make sure this component exists
 
 const ChatMainComponent = () => {
   const router = useRouter();
@@ -32,6 +30,7 @@ const ChatMainComponent = () => {
   useEffect(() => {
     if (hasChecked && !isAuthenticated) {
       // Redirect to login if not authenticated
+      console.log(currentCourse)
       router.push(`/login?redirectTo=${window.location.pathname}`);
     }
   }, [hasChecked, isAuthenticated, router]);
@@ -57,7 +56,7 @@ const ChatMainComponent = () => {
   
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <ChatContainer currentCourse={currentCourse} />
+      {/* <ChatContainer currentCourse={currentCourse} /> */}
     </div>
   );
 };

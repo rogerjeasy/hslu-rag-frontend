@@ -10,91 +10,105 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Sparkles, Zap, Brain, Cpu } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Info } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-// Define models with their capabilities
+// Available models
 const MODELS = [
-  {
+  { 
     id: 'gpt-4',
     name: 'GPT-4',
-    description: 'Most capable model for complex tasks',
-    capabilities: ['Advanced reasoning', 'Deep subject expertise', 'More accurate responses']
+    description: 'Most powerful model, best for complex tasks',
+    icon: Brain,
+    color: 'text-purple-500',
   },
-  {
+  { 
+    id: 'claude-3-opus',
+    name: 'Claude 3 Opus',
+    description: 'Advanced reasoning and in-depth analysis',
+    icon: Sparkles,
+    color: 'text-blue-500',
+  },
+  { 
     id: 'gpt-3.5-turbo',
-    name: 'GPT-3.5',
-    description: 'Fast, cost-effective model',
-    capabilities: ['Faster responses', 'Good for simpler queries', 'Lower resource usage']
+    name: 'GPT-3.5 Turbo',
+    description: 'Fast and efficient for most tasks',
+    icon: Zap,
+    color: 'text-green-500',
   },
-  {
-    id: 'claude-2',
-    name: 'Claude 2',
-    description: 'Alternative model with different strengths',
-    capabilities: ['Long context window', 'Detailed text analysis', 'Clear explanations']
-  }
+  { 
+    id: 'claude-3-haiku',
+    name: 'Claude 3 Haiku',
+    description: 'Quick responses, great for chat',
+    icon: Cpu,
+    color: 'text-amber-500',
+  },
 ];
 
 interface ModelSelectorProps {
-  onModelChange?: (modelId: string) => void;
+  selectedModel: string;
+  onSelectModel: (modelId: string) => void;
+  className?: string;
 }
 
-const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange }) => {
-  const [selectedModel, setSelectedModel] = React.useState(MODELS[0].id);
-
-  const handleModelChange = (value: string) => {
-    setSelectedModel(value);
-    
-    if (onModelChange) {
-      onModelChange(value);
-    }
-  };
-
-  const currentModel = MODELS.find(model => model.id === selectedModel);
+const ModelSelector: React.FC<ModelSelectorProps> = ({
+  selectedModel,
+  onSelectModel,
+  className,
+}) => {
+  const selectedModelInfo = MODELS.find(m => m.id === selectedModel) || MODELS[0];
+  const Icon = selectedModelInfo.icon;
 
   return (
-    <div className="flex items-center">
-      <Select value={selectedModel} onValueChange={handleModelChange}>
-        <SelectTrigger className="w-28 sm:w-32 h-8 text-xs">
-          <SelectValue placeholder="Select Model" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectGroup>
-            <SelectLabel>AI Models</SelectLabel>
-            {MODELS.map(model => (
-              <SelectItem key={model.id} value={model.id} className="text-sm flex items-center">
-                {model.name}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        </SelectContent>
-      </Select>
-      
-      {currentModel && (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Info className="ml-1 h-4 w-4 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-400 cursor-help" />
-            </TooltipTrigger>
-            <TooltipContent className="w-64">
-              <div>
-                <p className="font-medium mb-1">{currentModel.name}</p>
-                <p className="text-sm mb-2">{currentModel.description}</p>
-                <ul className="text-xs space-y-1 list-disc list-inside">
-                  {currentModel.capabilities.map((capability, index) => (
-                    <li key={index}>{capability}</li>
-                  ))}
-                </ul>
-              </div>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      )}
+    <div className={className}>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Select value={selectedModel} onValueChange={onSelectModel}>
+              <SelectTrigger className="w-[180px] bg-white dark:bg-slate-800">
+                <div className="flex items-center gap-2">
+                  <Icon className={cn("h-4 w-4", selectedModelInfo.color)} />
+                  <SelectValue>{selectedModelInfo.name}</SelectValue>
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectLabel>Models</SelectLabel>
+                  {MODELS.map(model => {
+                    const ModelIcon = model.icon;
+                    return (
+                      <SelectItem
+                        key={model.id}
+                        value={model.id}
+                        className="flex items-center gap-2 py-2"
+                      >
+                        <div className="flex items-center gap-2">
+                          <ModelIcon className={cn("h-4 w-4", model.color)} />
+                          <div className="flex flex-col">
+                            <span>{model.name}</span>
+                            <span className="text-xs text-slate-500 dark:text-slate-400">
+                              {model.description}
+                            </span>
+                          </div>
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{selectedModelInfo.description}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     </div>
   );
 };

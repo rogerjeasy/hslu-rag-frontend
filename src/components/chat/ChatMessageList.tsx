@@ -1,42 +1,56 @@
 "use client";
 
-import React, { RefObject } from 'react';
+import React from 'react';
 import { Message } from '@/types/conversation';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Loader2 } from 'lucide-react';
 import ChatMessage from './ChatMessage';
-import LoadingIndicator from '../ui/LoadingIndicator';
 
 interface ChatMessageListProps {
   messages: Message[];
-  isLoading?: boolean;
-  messagesEndRef: RefObject<HTMLDivElement | null>;
+  isLoading: boolean;
 }
 
 const ChatMessageList: React.FC<ChatMessageListProps> = ({ 
   messages, 
-  isLoading = false,
-  messagesEndRef 
+  isLoading 
 }) => {
   return (
-    <div className="flex flex-col h-full overflow-y-auto px-4 py-4 space-y-6">
-      {messages.map((message) => (
-        <ChatMessage key={message.id} message={message} />
-      ))}
-      
-      {isLoading && (
-        <div className="flex items-start">
-          <div className="flex-shrink-0 mr-4 mt-1">
-            <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white">
-              AI
+    <div className="space-y-6 max-w-3xl mx-auto py-4">
+      <AnimatePresence initial={false}>
+        {messages.map((message, index) => (
+          <motion.div
+            key={message.id}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ 
+              duration: 0.3, 
+              delay: Math.min(index * 0.05, 0.3) 
+            }}
+          >
+            <ChatMessage message={message} />
+          </motion.div>
+        ))}
+        
+        {isLoading && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center justify-center py-4"
+          >
+            <div className="flex items-center space-x-2 text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 px-4 py-2 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="text-sm">Generating response...</span>
             </div>
-          </div>
-          <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg max-w-3xl">
-            <LoadingIndicator />
-          </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      {messages.length === 0 && !isLoading && (
+        <div className="text-center text-slate-500 dark:text-slate-400 py-12">
+          <p>No messages yet. Start a conversation by typing a message below.</p>
         </div>
       )}
-      
-      {/* Invisible element to scroll to */}
-      <div ref={messagesEndRef} />
     </div>
   );
 };

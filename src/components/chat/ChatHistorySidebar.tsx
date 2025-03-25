@@ -3,300 +3,373 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, MessageCircle, Pin, Trash, X, RefreshCw } from 'lucide-react';
+import { useConversationStore } from '@/store/conversationStore';
+import { useRouter, usePathname } from 'next/navigation';
+import { ExtendedConversationSummary } from '@/types/conversation';
+import { QueryType } from '@/types/query';
+import SubjectSelector from './SubjectSelector';
+import { Plus, Search, MessageSquare, Trash2, Pin, BookOpen, PenSquare } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useConversationStore } from '@/store/conversationStore';
-import { ExtendedConversationSummary } from '@/types/conversation';
-import { formatDistanceToNow } from 'date-fns';
-import { QueryType } from '@/types/query';
+import { cn } from '@/lib/utils';
+import { motion } from "framer-motion";
 
 interface ChatHistorySidebarProps {
-  onSelectConversation?: () => void;
-  currentCourseId?: string;
+  selectedCourse: string | null;
+  onSelectCourse: (courseId: string | null) => void;
 }
 
-const ChatHistorySidebar: React.FC<ChatHistorySidebarProps> = ({ 
-  onSelectConversation,
-  currentCourseId
+const ChatHistorySidebar: React.FC<ChatHistorySidebarProps> = ({
+  selectedCourse,
+  onSelectCourse,
 }) => {
+  const router = useRouter();
+  const pathname = usePathname();
   const [searchTerm, setSearchTerm] = useState('');
-  const { 
-    conversations, 
+  const [activeTab, setActiveTab] = useState('all');
+  
+  const {
+    // conversations,
     filteredConversations,
-    fetchConversations, 
-    setSearchTerm: setStoreSearchTerm, 
-    createConversation,
-    getConversation,
+    fetchConversations,
+    setSearchTerm: setStoreSearchTerm,
+    setSelectedCourse: setStoreSelectedCourse,
     deleteConversation,
     updateConversation,
-    setCurrentConversation,
-    currentConversation,
-    isLoading
   } = useConversationStore();
-  
+
   useEffect(() => {
-    fetchConversations(currentCourseId);
-  }, [fetchConversations, currentCourseId]);
+    fetchConversations(selectedCourse || undefined);
+  }, [fetchConversations, selectedCourse]);
+
+  useEffect(() => {
+    setStoreSearchTerm(searchTerm);
+  }, [searchTerm, setStoreSearchTerm]);
+
+  useEffect(() => {
+    setStoreSelectedCourse(selectedCourse);
+  }, [selectedCourse, setStoreSelectedCourse]);
+
+  const handleNewChat = () => {
+    router.push('/chat');
+  };
+
+  const openConversation = (id: string) => {
+    router.push(`/chat/${id}`);
+  };
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setSearchTerm(value);
-    setStoreSearchTerm(value);
+    setSearchTerm(e.target.value);
   };
 
-  const clearSearch = () => {
-    setSearchTerm('');
-    setStoreSearchTerm('');
-  };
-
-  const startNewConversation = async () => {
-    // Clear the current conversation to show empty state
-    setCurrentConversation(null);
-    
-    if (onSelectConversation) {
-      onSelectConversation();
-    }
-  };
-
-  const selectConversation = async (id: string) => {
-    try {
-      await getConversation(id);
-      
-      if (onSelectConversation) {
-        onSelectConversation();
-      }
-    } catch (error) {
-      console.error("Failed to load conversation:", error);
-    }
-  };
-
-  const togglePin = async (conversation: ExtendedConversationSummary, e: React.MouseEvent) => {
+  const handleDeleteConversation = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    try {
-      await updateConversation(conversation.id, { 
-        pinned: !conversation.pinned 
-      });
-    } catch (error) {
-      console.error("Failed to update conversation:", error);
-    }
-  };
-
-  const handleDelete = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
+    if (confirm('Are you sure you want to delete this conversation?')) {
       await deleteConversation(id);
-      
-      // If we deleted the current conversation, clear it
-      if (currentConversation?.id === id) {
-        setCurrentConversation(null);
-      }
-    } catch (error) {
-      console.error("Failed to delete conversation:", error);
     }
   };
 
-  // Group conversations by date (today, yesterday, this week, this month, older)
-  const groupConversationsByDate = (conversations: ExtendedConversationSummary[]) => {
-    const groups: { [key: string]: ExtendedConversationSummary[] } = {
-      'Pinned': [],
-      'Today': [],
-      'Yesterday': [],
-      'This Week': [],
-      'This Month': [],
-      'Older': []
-    };
-
-    const now = new Date();
-    const yesterday = new Date(now);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const lastWeek = new Date(now);
-    lastWeek.setDate(lastWeek.getDate() - 7);
-    const lastMonth = new Date(now);
-    lastMonth.setMonth(lastMonth.getMonth() - 1);
-
-    conversations.forEach(conversation => {
-      const date = new Date(conversation.updatedAt);
-      
-      // Always add pinned conversations to the pinned group
-      if (conversation.pinned) {
-        groups['Pinned'].push(conversation);
-        return;
-      }
-      
-      if (date.toDateString() === now.toDateString()) {
-        groups['Today'].push(conversation);
-      } else if (date.toDateString() === yesterday.toDateString()) {
-        groups['Yesterday'].push(conversation);
-      } else if (date > lastWeek) {
-        groups['This Week'].push(conversation);
-      } else if (date > lastMonth) {
-        groups['This Month'].push(conversation);
-      } else {
-        groups['Older'].push(conversation);
-      }
+  const handleTogglePin = async (e: React.MouseEvent, conversation: ExtendedConversationSummary) => {
+    e.stopPropagation();
+    await updateConversation(conversation.id, {
+      pinned: !conversation.pinned,
     });
-
-    // Remove empty groups
-    Object.keys(groups).forEach(key => {
-      if (groups[key].length === 0) {
-        delete groups[key];
-      }
-    });
-
-    return groups;
   };
 
-  const groupedConversations = groupConversationsByDate(filteredConversations);
+  // Type assertion to treat filteredConversations as ExtendedConversationSummary[]
+  const extendedConversations = filteredConversations as ExtendedConversationSummary[];
 
-  // Helper to get appropriate icon for query type
-  const getQueryTypeIcon = (queryType?: QueryType) => {
-    switch (queryType) {
-      case QueryType.STUDY_GUIDE:
-        return '📚';
-      case QueryType.PRACTICE_QUESTIONS:
-        return '📝';
-      case QueryType.KNOWLEDGE_GAP:
-        return '🧠';
+  const filterConversationsByTab = (conversations: ExtendedConversationSummary[]) => {
+    switch (activeTab) {
+      case 'pinned':
+        return conversations.filter(c => c.pinned);
+      case 'qa':
+        return conversations.filter(c => 
+          !c.queryType || c.queryType === QueryType.QUESTION_ANSWERING
+        );
+      case 'study':
+        return conversations.filter(c => 
+          c.queryType === QueryType.STUDY_GUIDE || 
+          c.queryType === QueryType.KNOWLEDGE_GAP
+        );
+      case 'practice':
+        return conversations.filter(c => c.queryType === QueryType.PRACTICE_QUESTIONS);
       default:
-        return '💬';
+        return conversations;
     }
   };
+
+  const filteredByTab = filterConversationsByTab(extendedConversations);
+
+  // Format the date to display
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    
+    // If today, show time
+    if (date.toDateString() === now.toDateString()) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    
+    // If this year, show month and day
+    if (date.getFullYear() === now.getFullYear()) {
+      return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    }
+    
+    // Otherwise show full date
+    return date.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' });
+  };
+
+  // Group conversations by date
+  const groupedConversations = filteredByTab.reduce<Record<string, ExtendedConversationSummary[]>>(
+    (groups, conversation) => {
+      const date = new Date(conversation.updatedAt);
+      const dateStr = date.toDateString();
+      
+      if (!groups[dateStr]) {
+        groups[dateStr] = [];
+      }
+      
+      groups[dateStr].push(conversation);
+      return groups;
+    },
+    {}
+  );
+
+  // Sort dates newest first
+  const sortedDates = Object.keys(groupedConversations).sort(
+    (a, b) => new Date(b).getTime() - new Date(a).getTime()
+  );
+
+  // Function to render the appropriate icon based on query type
+  const renderQueryTypeIcon = (queryType?: QueryType) => {
+    switch (queryType) {
+      case QueryType.QUESTION_ANSWERING:
+        return <MessageSquare className="h-3.5 w-3.5 mr-1.5 text-blue-500" />;
+      case QueryType.STUDY_GUIDE:
+        return <BookOpen className="h-3.5 w-3.5 mr-1.5 text-emerald-500" />;
+      case QueryType.PRACTICE_QUESTIONS:
+        return <PenSquare className="h-3.5 w-3.5 mr-1.5 text-amber-500" />;
+      case QueryType.KNOWLEDGE_GAP:
+        return <PenSquare className="h-3.5 w-3.5 mr-1.5 text-violet-500" />;
+      default:
+        return <MessageSquare className="h-3.5 w-3.5 mr-1.5 text-blue-500" />;
+    }
+  };
+
+  // Check if conversation is active based on the current path
+  const isActive = (conversationId: string) => {
+    return pathname === `/chat/${conversationId}`;
+  };
+
+  // Render a conversation item
+  const renderConversationItem = (conversation: ExtendedConversationSummary) => (
+    <motion.div
+      key={conversation.id}
+      initial={{ opacity: 0.8, y: 5 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2 }}
+      whileHover={{ scale: 1.01 }}
+      onClick={() => openConversation(conversation.id)}
+      className={cn(
+        "p-3 cursor-pointer rounded-lg transition-all duration-200 mb-2",
+        "hover:bg-slate-200/80 dark:hover:bg-slate-800/80 group",
+        "border-l-2 border-transparent",
+        isActive(conversation.id) && "bg-slate-200/80 dark:bg-slate-800/80 border-l-2 border-blue-500 shadow-sm"
+      )}
+    >
+      <div className="flex justify-between items-start gap-2">
+        <div className="flex items-center min-w-0">
+          {renderQueryTypeIcon(conversation.queryType)}
+          <h3 className="text-sm font-medium truncate max-w-[150px] sm:max-w-[180px] lg:max-w-[200px] xl:max-w-[220px]">
+            {conversation.title}
+          </h3>
+        </div>
+        <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-6 w-6 hover:bg-slate-300/50 dark:hover:bg-slate-700/50 rounded-full"
+                  onClick={(e) => handleTogglePin(e, conversation)}
+                >
+                  <Pin className={cn(
+                    "h-3.5 w-3.5 transition-all duration-200",
+                    conversation.pinned
+                      ? "fill-amber-500 text-amber-500"
+                      : "text-slate-400"
+                  )} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="left">
+                {conversation.pinned ? 'Unpin' : 'Pin'}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-6 w-6 text-red-500 hover:text-red-600 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-full"
+                  onClick={(e) => handleDeleteConversation(e, conversation.id)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="left">Delete</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      </div>
+      
+      <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-1">
+        {conversation.lastMessagePreview || 'No messages'}
+      </p>
+      
+      <div className="flex justify-between items-center mt-2">
+        {conversation.courseId && (
+          <Badge variant="outline" className="text-xs px-1.5 py-0 h-5 bg-slate-100 dark:bg-slate-800 truncate max-w-[120px]">
+            {conversation.courseId}
+          </Badge>
+        )}
+        <span className="text-xs text-slate-400 ml-auto">
+          {formatDate(conversation.updatedAt)}
+        </span>
+      </div>
+    </motion.div>
+  );
+  
+  // Render content for a specific tab
+  const renderTabContent = (tabValue: string) => (
+    <TabsContent value={tabValue} className="mt-2 p-0 overflow-hidden">
+      {filteredByTab.length === 0 ? (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
+          className="p-4 text-center text-slate-500 dark:text-slate-400 bg-slate-100/50 dark:bg-slate-800/50 rounded-lg"
+        >
+          {searchTerm
+            ? 'No conversations found for your search'
+            : tabValue === 'pinned' 
+              ? 'No pinned conversations' 
+              : 'No conversations yet'}
+        </motion.div>
+      ) : (
+        <div className="py-2 px-1">
+          {sortedDates.map(dateStr => (
+            <div key={dateStr} className="mb-2">
+              <div className="px-3 py-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 sticky top-0 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-sm z-10 rounded-md">
+                {new Date(dateStr).toDateString() === new Date().toDateString()
+                  ? 'Today'
+                  : new Date(dateStr).toLocaleDateString([], {
+                      weekday: 'long',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+              </div>
+              
+              {groupedConversations[dateStr].map(renderConversationItem)}
+              <Separator className="my-2 opacity-30" />
+            </div>
+          ))}
+        </div>
+      )}
+    </TabsContent>
+  );
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-        <h2 className="text-lg font-medium mb-4">Conversations</h2>
+    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 overflow-hidden">
+      <div className="p-4 border-b border-slate-200 dark:border-slate-800">
+        <h2 className="text-xl font-bold mb-4 text-slate-800 dark:text-slate-100">Chat History</h2>
         
-        {/* Search Bar */}
+        <motion.div 
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.98 }}
+        >
+          <Button
+            onClick={handleNewChat}
+            className="w-full mb-4 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white font-medium shadow-sm transition-all duration-200"
+          >
+            <Plus className="mr-2 h-4 w-4" /> New Conversation
+          </Button>
+        </motion.div>
+        
+        <SubjectSelector
+          selectedCourse={selectedCourse}
+          onSelectCourse={onSelectCourse}
+          className="mb-4"
+        />
+        
         <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500 dark:text-gray-400" />
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500 dark:text-slate-400" />
           <Input
             type="text"
             placeholder="Search conversations..."
             value={searchTerm}
             onChange={handleSearch}
-            className="pl-9 pr-9 h-9"
+            className="pl-9 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-blue-500 focus:border-blue-500 rounded-md shadow-sm"
           />
-          {searchTerm && (
-            <button
-              onClick={clearSearch}
-              className="absolute right-2.5 top-2.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+        </div>
+      </div>
+      
+      <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+        <div className="px-2 pt-2 border-b border-slate-200 dark:border-slate-800">
+          <TabsList className="w-full flex overflow-x-auto hide-scrollbar justify-start bg-slate-100 dark:bg-slate-800/50 p-0.5 rounded-lg">
+            <TabsTrigger 
+              value="all" 
+              className="text-sm flex-1 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all duration-200"
             >
-              <X className="h-4 w-4" />
-            </button>
-          )}
+              All
+            </TabsTrigger>
+            <TabsTrigger 
+              value="pinned" 
+              className="text-sm flex-1 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all duration-200"
+            >
+              Pinned
+            </TabsTrigger>
+            <TabsTrigger 
+              value="qa" 
+              className="text-sm flex-1 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all duration-200"
+            >
+              Q&A
+            </TabsTrigger>
+            <TabsTrigger 
+              value="study" 
+              className="text-sm flex-1 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all duration-200"
+            >
+              Study
+            </TabsTrigger>
+            <TabsTrigger 
+              value="practice" 
+              className="text-sm flex-1 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all duration-200"
+            >
+              Practice
+            </TabsTrigger>
+          </TabsList>
         </div>
         
-        {/* New Conversation Button */}
-        <Button 
-          onClick={startNewConversation} 
-          className="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white"
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          New Conversation
-        </Button>
-      </div>
-
-      {/* Conversation List */}
-      <div className="flex-1 overflow-y-auto pb-4">
-        {isLoading ? (
-          <div className="flex justify-center items-center h-32">
-            <RefreshCw className="h-6 w-6 text-gray-400 animate-spin" />
-          </div>
-        ) : filteredConversations.length === 0 ? (
-          <div className="text-center text-gray-500 dark:text-gray-400 p-4">
-            {searchTerm ? 'No conversations found' : 'No conversations yet'}
-          </div>
-        ) : (
-          Object.entries(groupedConversations).map(([group, conversations]) => (
-            <div key={group} className="mt-4">
-              <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 px-4 mb-1">
-                {group}
-              </h3>
-              <ul>
-                {conversations.map(conversation => (
-                  <li key={conversation.id} className="px-2">
-                    <div 
-                      onClick={() => selectConversation(conversation.id)}
-                      className={`flex items-start p-2 rounded-md cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-700 ${
-                        currentConversation?.id === conversation.id 
-                          ? 'bg-gray-200 dark:bg-gray-700' 
-                          : ''
-                      }`}
-                    >
-                      <div className="mr-3 mt-1">
-                        <div className="flex items-center justify-center h-8 w-8 rounded-md bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300">
-                          {getQueryTypeIcon(conversation.queryType)}
-                        </div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between">
-                          <h4 className="font-medium truncate max-w-[140px]">
-                            {conversation.title}
-                          </h4>
-                          <div className="flex items-center space-x-1 ml-1 flex-shrink-0">
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={(e) => togglePin(conversation, e)}
-                                    className={`h-6 w-6 ${
-                                      conversation.pinned
-                                        ? 'text-blue-600 dark:text-blue-400'
-                                        : 'text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-300'
-                                    }`}
-                                  >
-                                    <Pin size={14} />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>{conversation.pinned ? 'Unpin' : 'Pin'}</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                            
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={(e) => handleDelete(conversation.id, e)}
-                                    className="h-6 w-6 text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400"
-                                  >
-                                    <Trash size={14} />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Delete</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          </div>
-                        </div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[200px]">
-                          {conversation.lastMessagePreview || 'No messages yet'}
-                        </p>
-                        <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                          {formatDistanceToNow(new Date(conversation.updatedAt), { addSuffix: true })}
-                        </div>
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))
-        )}
-      </div>
+        <ScrollArea className="flex-1 px-2 py-1 overflow-y-auto">
+          {renderTabContent('all')}
+          {renderTabContent('pinned')}
+          {renderTabContent('qa')}
+          {renderTabContent('study')}
+          {renderTabContent('practice')}
+        </ScrollArea>
+      </Tabs>
     </div>
   );
 };

@@ -2,11 +2,11 @@
 
 import React, { useState } from 'react';
 import { Message } from '@/types/conversation';
-import { Citation } from '@/types/query';
-import Markdown from '../ui/Markdown';
-import { formatDistanceToNow } from 'date-fns';
-import { Copy, Check, Info, ExternalLink } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { Copy, Check, BookOpen, ExternalLink } from 'lucide-react';
+import Markdown from '@/components/ui/Markdown';
+import { Citation } from '@/types/query';
 import {
   Tooltip,
   TooltipContent,
@@ -18,6 +18,8 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 interface ChatMessageProps {
   message: Message;
@@ -26,138 +28,149 @@ interface ChatMessageProps {
 const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
   const [copied, setCopied] = useState(false);
   const [citationsOpen, setCitationsOpen] = useState(false);
-
-  // Whether this is a user message or AI message
+  
   const isUser = message.role === 'user';
+  const citations = message.metadata?.citations as Citation[] | undefined;
+  const hasCitations = citations && citations.length > 0;
   
-  // Format the message timestamp
-  const formattedTime = formatDistanceToNow(new Date(message.timestamp), { addSuffix: true });
-  
-  // Get citations from message metadata if available
-  const citations: Citation[] = message.metadata?.citations as Citation[] || [];
-  const hasCitations = citations.length > 0;
-
-  const copyToClipboard = () => {
+  const handleCopyContent = () => {
     navigator.clipboard.writeText(message.content);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const formatDateTime = (timestamp: string) => {
+    try {
+      const date = new Date(timestamp);
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+      console.error('Error formatting date:', e);
+      return '';
+    }
+  };
+
   return (
-    <div className={`flex items-start ${isUser ? 'justify-end' : ''}`}>
-      {/* Avatar/Icon */}
-      {!isUser && (
-        <div className="flex-shrink-0 mr-4 mt-1">
-          <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white">
-            AI
-          </div>
-        </div>
+    <div 
+      className={cn(
+        "group relative px-4 py-6 sm:px-6 rounded-lg transition-colors",
+        isUser 
+          ? "bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30" 
+          : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm"
       )}
-
-      {/* Message Content */}
-      <div className={`flex flex-col max-w-3xl ${isUser ? 'items-end' : 'items-start'}`}>
-        <div 
-          className={`p-3 rounded-lg ${
-            isUser 
-              ? 'bg-blue-600 text-white' 
-              : 'bg-gray-100 dark:bg-gray-700 dark:text-gray-200'
-          }`}
-        >
+    >
+      <div className="flex gap-4">
+        <Avatar className={cn(
+          "h-8 w-8 rounded-full",
+          isUser ? "bg-primary" : "bg-emerald-500"
+        )}>
+          <AvatarFallback>
+            {isUser ? 'U' : 'AI'}
+          </AvatarFallback>
           {isUser ? (
-            <p className="whitespace-pre-wrap">{message.content}</p>
+            <AvatarImage src="/user-avatar.png" alt="User" />
           ) : (
-            <Markdown content={message.content} />
+            <AvatarImage src="/ai-avatar.png" alt="AI Assistant" />
           )}
-        </div>
+        </Avatar>
         
-        {/* Message Metadata */}
-        <div className="flex items-center mt-1 space-x-2 text-xs text-gray-500">
-          <span>{formattedTime}</span>
+        <div className="flex-1 space-y-2">
+          <div className="flex justify-between items-start">
+            <div className="font-medium text-sm">
+              {isUser ? 'You' : 'AI Assistant'}
+            </div>
+            <div className="text-xs text-slate-500 dark:text-slate-400">
+              {formatDateTime(message.timestamp)}
+            </div>
+          </div>
           
-          {!isUser && (
-            <>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-                      onClick={copyToClipboard}
+          <div className="prose prose-slate dark:prose-invert prose-p:my-2 prose-p:leading-relaxed prose-pre:my-2 max-w-none">
+            <Markdown content={message.content} />
+          </div>
+          
+          {hasCitations && (
+            <Collapsible
+              open={citationsOpen}
+              onOpenChange={setCitationsOpen}
+              className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700"
+            >
+              <div className="flex items-center">
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="px-0 space-x-2">
+                    <BookOpen className="h-4 w-4" />
+                    <span className="text-xs font-medium">
+                      {citationsOpen ? 'Hide Sources' : `${citations.length} Source${citations.length > 1 ? 's' : ''}`}
+                    </span>
+                  </Button>
+                </CollapsibleTrigger>
+              </div>
+              
+              <CollapsibleContent className="mt-3">
+                <div className="space-y-3">
+                  {citations.map((citation, index) => (
+                    <div 
+                      key={`${citation.materialId}-${index}`}
+                      className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md p-3"
                     >
-                      {copied ? <Check size={14} /> : <Copy size={14} />}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{copied ? 'Copied!' : 'Copy message'}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              {hasCitations && (
-                <Collapsible
-                  open={citationsOpen}
-                  onOpenChange={setCitationsOpen}
-                  className="w-full"
-                >
-                  <CollapsibleTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-2 text-xs flex items-center gap-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                    >
-                      <Info size={12} />
-                      <span>{citations.length} {citations.length === 1 ? 'Source' : 'Sources'}</span>
-                    </Button>
-                  </CollapsibleTrigger>
-                  
-                  <CollapsibleContent className="mt-2 border rounded-md p-2 bg-gray-50 dark:bg-gray-800 text-sm">
-                    <h4 className="font-medium mb-2">Sources</h4>
-                    <ul className="space-y-2">
-                      {citations.map((citation, index) => (
-                        <li key={index} className="flex items-start gap-2">
-                          <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-blue-100 text-blue-800 text-xs">
-                            {index + 1}
-                          </span>
-                          <div className="flex-1">
-                            <p className="font-medium">{citation.title}</p>
-                            <p className="text-gray-600 dark:text-gray-400 text-xs">
-                              {citation.pageNumber && `Page ${citation.pageNumber}`}
-                            </p>
-                            <p className="text-gray-600 dark:text-gray-400 text-xs mt-1">
-                              {citation.contentPreview}
-                            </p>
-                            {citation.fileUrl && (
-                              <a 
-                                href={citation.fileUrl} 
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-xs flex items-center gap-1 mt-1"
-                              >
-                                <ExternalLink size={10} />
-                                <span>View Source</span>
-                              </a>
-                            )}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </CollapsibleContent>
-                </Collapsible>
-              )}
-            </>
+                      <div className="flex justify-between items-start mb-2">
+                        <Badge variant="outline" className="bg-primary/10 text-xs">
+                          {citation.pageNumber ? `Page ${citation.pageNumber}` : 'Document'}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          Chunk {citation.chunkIndex}
+                        </Badge>
+                      </div>
+                      
+                      <h4 className="text-sm font-medium mb-1 line-clamp-1">
+                        {citation.title || `Source ${index + 1}`}
+                      </h4>
+                      
+                      <p className="text-xs text-slate-700 dark:text-slate-300 line-clamp-2 mb-2">
+                        {citation.contentPreview}
+                      </p>
+                      
+                      {citation.fileUrl && (
+                        <Button
+                          variant="link"
+                          size="sm"
+                          className="p-0 h-auto text-xs"
+                          onClick={() => window.open(citation.fileUrl, '_blank')}
+                        >
+                          <ExternalLink className="h-3 w-3 mr-1" />
+                          View source
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           )}
         </div>
       </div>
-
-      {/* User Avatar (right-aligned) */}
-      {isUser && (
-        <div className="flex-shrink-0 ml-4 mt-1">
-          <div className="h-8 w-8 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-gray-700 dark:text-gray-300">
-            U
-          </div>
-        </div>
-      )}
+      
+      <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8"
+                onClick={handleCopyContent}
+              >
+                {copied ? (
+                  <Check className="h-4 w-4 text-green-500" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {copied ? 'Copied!' : 'Copy message'}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
     </div>
   );
 };
