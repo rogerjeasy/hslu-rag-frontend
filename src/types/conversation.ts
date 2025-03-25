@@ -1,10 +1,15 @@
 /**
- * Types for conversations in the HSLU RAG application
+ * Updated types for conversations in the HSLU RAG application
  */
-import { QueryType, AdditionalParams } from './query';
+import { QueryType, AdditionalParams, Citation } from './query';
 
 // Define a type for metadata to replace "any"
-export type MessageMetadata = Record<string, unknown>;
+export type MessageMetadata = {
+  citations?: Citation[];
+  queryType?: QueryType;
+  additionalParams?: AdditionalParams;
+  [key: string]: unknown;
+};
 
 export interface Message {
   id: string;
@@ -24,7 +29,7 @@ export interface Conversation {
   updatedAt: string;
   messages: Message[];
   active: boolean;
-  pinned?: boolean; // Added pinned property
+  pinned?: boolean;
 }
 
 export interface ConversationSummary {
@@ -38,7 +43,7 @@ export interface ConversationSummary {
   messageCount: number;
   lastMessagePreview?: string;
   active: boolean;
-  pinned?: boolean; // Added pinned property
+  pinned?: boolean;
 }
 
 export interface ConversationCreateRequest {
@@ -47,13 +52,13 @@ export interface ConversationCreateRequest {
   moduleId?: string;
   topicId?: string;
   initialMessage?: string;
-  pinned?: boolean; // Added pinned property
+  pinned?: boolean;
 }
 
 export interface ConversationUpdateRequest {
   title?: string;
   active?: boolean;
-  pinned?: boolean; // Added pinned property
+  pinned?: boolean;
 }
 
 export interface MessageCreateRequest {

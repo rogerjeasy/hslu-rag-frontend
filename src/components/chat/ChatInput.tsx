@@ -1,177 +1,217 @@
 "use client";
 
-import { useState, useRef, useEffect } from 'react';
-import { Send, Paperclip, Loader2, Sparkles } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import TextareaAutosize from 'react-textarea-autosize';
-import { ChatInputProps } from '@/types/chat';
-import { cn } from '@/lib/utils';
+import { Textarea } from '@/components/ui/textarea';
+import { Send, PlusCircle, Paperclip, Sparkles, ChevronUp, ChevronDown } from 'lucide-react';
+import { QueryType } from '@/types/query';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-export default function ChatInput({
-  onSendMessage,
-  isLoading,
-  disabled
-}: ChatInputProps) {
+interface ChatInputProps {
+  onSendMessage: (content: string, queryType?: QueryType) => void;
+  disabled?: boolean;
+  conversationId?: string;
+}
+
+const ChatInput: React.FC<ChatInputProps> = ({ 
+  onSendMessage, 
+  disabled = false,
+  conversationId 
+}) => {
   const [message, setMessage] = useState('');
-  const [isFocused, setIsFocused] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const [queryTypeOpen, setQueryTypeOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Check viewport size and focus the textarea
+  // Focus textarea when conversation changes
   useEffect(() => {
-    const checkScreenSize = () => {
-      setIsMobile(window.innerWidth < 640);
-    };
-    
-    // Initial check
-    checkScreenSize();
-    
-    // Focus the textarea
-    if (textareaRef.current && !disabled) {
+    if (textareaRef.current) {
       textareaRef.current.focus();
     }
-    
-    // Add resize listener
-    window.addEventListener('resize', checkScreenSize);
-    
-    // Cleanup
-    return () => {
-      window.removeEventListener('resize', checkScreenSize);
-    };
-  }, [disabled]);
+  }, [conversationId]);
 
-  // Handle sending the message
-  const handleSendMessage = () => {
-    if (message.trim() && !isLoading && !disabled) {
-      onSendMessage(message);
+  const handleSend = (queryType: QueryType = QueryType.QUESTION_ANSWERING) => {
+    if (message.trim() && !disabled) {
+      onSendMessage(message, queryType);
       setMessage('');
       
-      // Refocus the textarea after sending
+      // Reset height after sending
       if (textareaRef.current) {
-        textareaRef.current.focus();
+        textareaRef.current.style.height = 'auto';
       }
     }
   };
 
-  // Handle Enter key to send message (with Shift+Enter for new line)
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Send message on Enter (without shift)
     if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault(); // Prevent default to avoid new line
-      handleSendMessage();
+      e.preventDefault();
+      handleSend();
     }
   };
-  
-  // Character counter color logic
-  const getCounterColor = () => {
-    if (message.length > 500) return "text-amber-500";
-    if (message.length > 1000) return "text-red-500";
-    return "text-muted-foreground";
+
+  // Auto-resize textarea
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setMessage(e.target.value);
+    
+    // Auto-resize
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`;
+    }
+  };
+
+  // Templates for different query types
+  const queryTemplates = {
+    [QueryType.QUESTION_ANSWERING]: [
+      "Can you explain the concept of...",
+      "What's the difference between...",
+      "How does ... work in the context of...",
+    ],
+    [QueryType.STUDY_GUIDE]: [
+      "Create a study guide for...",
+      "Summarize the key points in...",
+      "What are the main concepts I need to understand for...",
+    ],
+    [QueryType.PRACTICE_QUESTIONS]: [
+      "Generate practice questions about...",
+      "Create a quiz on...",
+      "Test my understanding of...",
+    ],
+    [QueryType.KNOWLEDGE_GAP]: [
+      "What topics should I focus on for...",
+      "Identify gaps in my understanding of...",
+      "Where am I weak in the subject of...",
+    ],
   };
 
   return (
-    <div className="relative w-full max-w-full transition-all duration-300">
-      <div className={cn(
-        "flex items-end border rounded-lg p-1.5 sm:p-2 bg-background/80 backdrop-blur-sm transition-all duration-300",
-        "hover:border-primary/20 shadow-sm",
-        isFocused ? "border-primary/30 shadow-md ring-1 ring-primary/10" : "border-border",
-        isLoading && "opacity-80"
-      )}>
-        {/* Message Input */}
-        <TextareaAutosize
+    <div className="p-4 max-w-4xl mx-auto w-full">
+      <div className="relative rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus-within:ring-2 focus-within:ring-blue-500 dark:focus-within:ring-blue-400">
+        {/* Query Type Button */}
+        <div className="absolute left-3 top-3">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+              >
+                <Sparkles size={18} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="top" align="start">
+              <DropdownMenuItem onClick={() => handleSend(QueryType.QUESTION_ANSWERING)}>
+                Ask a Question
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleSend(QueryType.STUDY_GUIDE)}>
+                Generate Study Guide
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleSend(QueryType.PRACTICE_QUESTIONS)}>
+                Generate Practice Questions
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleSend(QueryType.KNOWLEDGE_GAP)}>
+                Identify Knowledge Gaps
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {/* Template Suggestions Button */}
+        <div className="absolute right-14 top-3">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+              >
+                <PlusCircle size={18} />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent side="top" align="end" className="w-80 p-0">
+              <Tabs defaultValue={QueryType.QUESTION_ANSWERING}>
+                <div className="p-3 border-b">
+                  <TabsList className="w-full">
+                    <TabsTrigger value={QueryType.QUESTION_ANSWERING} className="flex-1">Questions</TabsTrigger>
+                    <TabsTrigger value={QueryType.STUDY_GUIDE} className="flex-1">Study</TabsTrigger>
+                    <TabsTrigger value={QueryType.PRACTICE_QUESTIONS} className="flex-1">Practice</TabsTrigger>
+                  </TabsList>
+                </div>
+                
+                {Object.entries(queryTemplates).map(([type, templates]) => (
+                  <TabsContent key={type} value={type} className="mt-0">
+                    <div className="py-1">
+                      {templates.map((template, index) => (
+                        <div
+                          key={index}
+                          className="px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+                          onClick={() => {
+                            setMessage(template);
+                            if (textareaRef.current) {
+                              textareaRef.current.focus();
+                            }
+                          }}
+                        >
+                          {template}
+                        </div>
+                      ))}
+                    </div>
+                  </TabsContent>
+                ))}
+              </Tabs>
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        {/* Attachment Button */}
+        <div className="absolute right-3 top-3">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            disabled={disabled}
+            className="h-8 w-8 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+          >
+            <Paperclip size={18} />
+          </Button>
+        </div>
+
+        {/* Textarea */}
+        <Textarea
           ref={textareaRef}
           value={message}
-          onChange={(e) => setMessage(e.target.value)}
+          onChange={handleTextareaChange}
           onKeyDown={handleKeyDown}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
-          placeholder={disabled 
-            ? "Select a subject to start chatting..." 
-            : isLoading 
-              ? "Processing..." 
-              : "Type your message..."}
-          className={cn(
-            "flex-1 resize-none border-0 bg-transparent py-2 px-2 sm:px-3",
-            "focus:ring-0 focus:outline-none max-h-40 min-h-[2.5rem]",
-            "text-sm placeholder:text-muted-foreground/70 transition-colors duration-200",
-            "scrollbar-thin scrollbar-thumb-primary/10 scrollbar-track-transparent",
-            disabled && "cursor-not-allowed opacity-70"
-          )}
-          maxRows={isMobile ? 4 : 5}
-          disabled={isLoading || disabled}
+          disabled={disabled}
+          placeholder="Type your message..."
+          className="resize-none min-h-[80px] max-h-[200px] pl-12 pr-24 py-3 rounded-md border-0 focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
         />
-       
-        {/* Action Buttons */}
-        <div className="flex items-center gap-1.5 pl-1.5 flex-shrink-0">
-          {/* Attachment Button - Optional */}
-          <Button
-            variant="ghost"
-            size="icon"
-            type="button"
-            disabled={isLoading || disabled}
-            title="Attach files"
-            className={cn(
-              "h-8 w-8 sm:h-9 sm:w-9 rounded-full transition-all duration-300",
-              "hover:bg-primary/10 text-muted-foreground hover:text-primary"
-            )}
+
+        {/* Send Button */}
+        <div className="absolute right-3 bottom-3">
+          <Button 
+            onClick={() => handleSend()} 
+            disabled={!message.trim() || disabled}
+            size="sm"
+            className="h-8 px-3 transition-all duration-200 bg-blue-600 hover:bg-blue-700 text-white"
           >
-            <Paperclip className="h-4 w-4 sm:h-5 sm:w-5" />
-            <span className="sr-only">Attach files</span>
+            <Send size={16} className="mr-1" />
+            <span>Send</span>
           </Button>
-         
-          {/* Send Button */}
-          <Button
-            type="button"
-            size="icon"
-            onClick={handleSendMessage}
-            disabled={!message.trim() || isLoading || disabled}
-            title="Send message"
-            className={cn(
-              "h-8 w-8 sm:h-9 sm:w-9 rounded-full transition-all duration-300",
-              !message.trim() || isLoading || disabled 
-                ? "opacity-70 bg-primary/70" 
-                : "bg-primary hover:bg-primary/90 group overflow-hidden relative"
-            )}
-          >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
-            ) : message.trim().length > 0 ? (
-              <>
-                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 group-hover:animate-shine" />
-                <Send className="h-4 w-4 sm:h-5 sm:w-5 transition-transform duration-300 group-hover:scale-110" />
-              </>
-            ) : (
-              <Send className="h-4 w-4 sm:h-5 sm:w-5" />
-            )}
-            <span className="sr-only">Send</span>
-          </Button>
-        </div>
-      </div>
-     
-      {/* Helper Text - Hide on very small screens or show compact version */}
-      <div className={cn(
-        "flex justify-between items-center text-[10px] sm:text-xs mt-1.5 transition-opacity duration-300",
-        disabled && "opacity-0"
-      )}>
-        <div className="hidden xs:flex items-center">
-          <span className="text-muted-foreground">Press <kbd className="bg-muted/50 px-1.5 py-0.5 rounded text-[10px] mx-1 border border-border/50">Enter</kbd> to send</span>
-        </div>
-        <div className="flex items-center gap-1">
-          {message.length > 0 && (
-            <Sparkles className={cn(
-              "h-2.5 w-2.5 sm:h-3 sm:w-3",
-              message.length > 0 ? "opacity-100" : "opacity-0",
-              "transition-opacity duration-300",
-              getCounterColor()
-            )} />
-          )}
-          <span className={cn(
-            "transition-colors duration-300 flex-shrink-0",
-            getCounterColor()
-          )}>
-            {message.length} {!isMobile && "characters"}
-          </span>
         </div>
       </div>
     </div>
   );
-}
+};
+
+export default ChatInput;

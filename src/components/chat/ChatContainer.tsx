@@ -1,203 +1,121 @@
 "use client";
-
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Conversation, Message, MessageCreateRequest } from '@/types/conversation';
+import { QueryType } from '@/types/query';
 import ChatHeader from './ChatHeader';
 import ChatMessageList from './ChatMessageList';
 import ChatInput from './ChatInput';
-import ChatControls from './ChatControls';
 import ChatHistorySidebar from './ChatHistorySidebar';
+import ChatControls from './ChatControls';
 import EmptyState from './EmptyState';
-import LoadingIndicator from '../ui/LoadingIndicator';
-import { Course } from '@/types/course.types';
-import { AIModel } from '@/types/chat';
-import { QueryType } from '@/types/query';
+import { Button } from '@/components/ui/button';
+import { Menu } from 'lucide-react';
 import { useConversationStore } from '@/store/conversationStore';
-import { useCourseStore } from '@/store/courseStore';
 
-export default function ChatContainer() {
-  // Get stores
-  const conversationStore = useConversationStore();
-  const courseStore = useCourseStore();
+interface ChatContainerProps {
+  currentCourse?: string;
+}
 
-  // Local state for UI
-  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
-  const [selectedModel, setSelectedModel] = useState<AIModel | null>(null);
-  const [showSidebar, setShowSidebar] = useState(true);
-  const [initialLoading, setInitialLoading] = useState(true);
-
-  // Reference to maintain scroll position - Fixed to use HTMLDivElement explicitly
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Extract data from stores
+const ChatContainer: React.FC<ChatContainerProps> = ({ currentCourse }) => {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const { 
     currentConversation, 
-    isLoading: isConversationLoading,
-    filteredConversations
-  } = conversationStore;
-
-  // Extract messages from current conversation
-  const messages = currentConversation?.messages || [];
+    sendMessage, 
+    createConversation,
+    isLoading 
+  } = useConversationStore();
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [currentConversation?.messages]);
 
-  // Load conversations and courses on initial render
-  useEffect(() => {
-    const initialize = async () => {
-      setInitialLoading(true);
-      
-      try {
-        // Load courses first
-        await courseStore.fetchCourses();
-        
-        // Then load conversations
-        await conversationStore.fetchConversations();
-      } catch (error) {
-        console.error('Failed to initialize:', error);
-      } finally {
-        setInitialLoading(false);
-      }
-    };
-
-    initialize();
-  }, [courseStore, conversationStore]);
-
-  // Function to send a message
-  const sendMessage = async (content: string) => {
-    if (!content.trim() || !selectedCourse) return;
-
+  const handleSendMessage = async (content: string, queryType: QueryType = QueryType.QUESTION_ANSWERING) => {
+    if (!content.trim()) return;
+    
     if (!currentConversation) {
-      // Create a new conversation first
-      const newConversation = await conversationStore.createConversation({
-        title: content.slice(0, 30) + (content.length > 30 ? '...' : ''),
-        courseId: selectedCourse.id,
+      // Create a new conversation if none exists
+      const newConversation = await createConversation({
+        title: content.length > 30 ? `${content.substring(0, 30)}...` : content,
+        courseId: currentCourse || '',
         initialMessage: content
       });
-
-      // Then send the message
-      await conversationStore.sendMessage(
-        newConversation.id,
-        content,
-        QueryType.QUESTION_ANSWERING
-      );
     } else {
-      // Send message to existing conversation
-      await conversationStore.sendMessage(
+      // Add to existing conversation
+      await sendMessage(
         currentConversation.id,
         content,
-        QueryType.QUESTION_ANSWERING
+        queryType
       );
     }
   };
 
-  // Start a new conversation
-  const startNewConversation = () => {
-    conversationStore.setCurrentConversation(null);
-  };
-
-  // Load an existing conversation
-  const loadConversation = (conversationId: string) => {
-    conversationStore.getConversation(conversationId);
-  };
-
-  // Toggle sidebar visibility
   const toggleSidebar = () => {
-    setShowSidebar(!showSidebar);
+    setSidebarOpen(!sidebarOpen);
   };
-
-  // Handle course change
-  const handleCourseChange = (course: Course) => {
-    setSelectedCourse(course);
-  };
-
-  // Display initial loading state
-  if (initialLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <div className="text-center">
-          <LoadingIndicator size="large" />
-          <p className="mt-4 text-muted-foreground">Loading your conversations...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="flex h-screen bg-background">
-      {/* History Sidebar - conditionally shown */}
-      {showSidebar && (
-        <div className="w-64 border-r border-border h-full">
-          <ChatHistorySidebar
-            conversations={filteredConversations}
-            currentConversationId={currentConversation?.id}
-            onSelectConversation={loadConversation}
-            onStartNewConversation={startNewConversation}
-            isLoading={isConversationLoading}
-          />
-        </div>
-      )}
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
+      {/* Sidebar */}
+      <div 
+        className={`fixed lg:relative z-10 lg:z-auto w-full sm:w-80 bg-white dark:bg-gray-800 shadow-lg transition-all duration-300 transform lg:transform-none ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        } h-full border-r border-gray-200 dark:border-gray-700 overflow-y-auto`}
+      >
+        <ChatHistorySidebar 
+          onSelectConversation={() => setSidebarOpen(false)} 
+          currentCourseId={currentCourse}
+        />
+      </div>
 
-      {/* Main Chat Interface */}
-      <div className="flex flex-col flex-1 h-full">
-        <ChatHeader
-          course={selectedCourse}
-          model={selectedModel}
-          onCourseChange={handleCourseChange}
-          onModelChange={setSelectedModel}
-          onToggleSidebar={toggleSidebar}
-          isLoading={isConversationLoading}
-          sidebarVisible={showSidebar}
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col w-full h-full overflow-hidden relative">
+        {/* Mobile sidebar toggle */}
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={toggleSidebar}
+          className="lg:hidden absolute top-3 left-3 z-20"
+        >
+          <Menu />
+        </Button>
+
+        {/* Chat Header */}
+        <ChatHeader 
+          conversation={currentConversation} 
+          courseId={currentCourse} 
         />
 
         {/* Chat Messages or Empty State */}
-        <div className="flex-1 overflow-hidden relative">
-          {messages.length > 0 ? (
+        <div className="flex-1 overflow-hidden">
+          {currentConversation ? (
             <ChatMessageList 
-              messages={messages} 
-              isLoading={isConversationLoading} 
-              messagesEndRef={messagesEndRef as React.RefObject<HTMLDivElement>} 
+              messages={currentConversation.messages} 
+              isLoading={isLoading} 
+              messagesEndRef={messagesEndRef}
             />
           ) : (
-            <EmptyState 
-              course={selectedCourse}
-              onStartConversation={sendMessage} 
-            />
-          )}
-          
-          {/* Overlay loading indicator for conversation changes */}
-          {isConversationLoading && messages.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center bg-background/80">
-              <LoadingIndicator />
-              <span className="ml-2">Preparing conversation...</span>
-            </div>
+            <EmptyState courseId={currentCourse} onStartConversation={handleSendMessage} />
           )}
         </div>
 
-        {/* Input Area and Controls */}
-        <div className="border-t border-border p-4">
+        {/* Chat Controls */}
+        <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+          <ChatControls conversation={currentConversation} />
+          
+          {/* Chat Input */}
           <ChatInput 
-            onSendMessage={sendMessage} 
-            isLoading={isConversationLoading} 
-            disabled={!selectedCourse}
-          />
-          <ChatControls 
-            onStartNewConversation={startNewConversation} 
-            onClearConversation={() => {
-              // Clear the current conversation by creating a new one
-              if (currentConversation && selectedCourse) {
-                conversationStore.createConversation({
-                  title: "New Conversation",
-                  courseId: selectedCourse.id
-                });
-              }
-            }}
-            hasActiveConversation={messages.length > 0}
-            isLoading={isConversationLoading}
+            onSendMessage={handleSendMessage}
+            disabled={isLoading}
+            conversationId={currentConversation?.id}
           />
         </div>
       </div>
     </div>
   );
-}
+};
+
+export default ChatContainer;

@@ -1,6 +1,7 @@
 /**
- * Types for queries and responses in the HSLU RAG application
+ * Updated types for queries and responses in the HSLU RAG application
  */
+
 export enum QueryType {
   QUESTION_ANSWERING = "question_answering",
   STUDY_GUIDE = "study_guide",
@@ -17,8 +18,26 @@ export interface Citation {
   fileUrl?: string;
 }
 
-// Define a type for additional parameters to replace "any"
-export type AdditionalParams = Record<string, unknown>;
+// Define specific types for additional parameters
+export type StudyGuideParams = {
+  detailLevel?: 'basic' | 'medium' | 'comprehensive';
+  format?: 'outline' | 'notes' | 'flashcards' | 'mind_map' | 'summary';
+  includePracticeQuestions?: boolean;
+};
+
+export type PracticeQuestionsParams = {
+  questionCount?: number;
+  difficulty?: 'basic' | 'medium' | 'advanced';
+  questionTypes?: string[];
+};
+
+export type KnowledgeGapParams = {
+  pastInteractionsCount?: number;
+  includeSuggestions?: boolean;
+};
+
+// Union type for all parameter types
+export type AdditionalParams = StudyGuideParams | PracticeQuestionsParams | KnowledgeGapParams | Record<string, unknown>;
 
 export interface QueryRequest {
   text: string;
@@ -40,21 +59,33 @@ export interface QueryResponse {
   additionalData?: AdditionalParams;
 }
 
-export interface StudyGuideRequest extends QueryRequest {
+// Extended interfaces for specific query types
+export interface StudyGuideQueryRequest extends QueryRequest {
   queryType: QueryType.STUDY_GUIDE;
-  detailLevel?: 'basic' | 'medium' | 'comprehensive';
-  format?: 'outline' | 'notes' | 'flashcards' | 'mind_map' | 'summary';
-  includePracticeQuestions?: boolean;
+  additionalParams: StudyGuideParams;
 }
 
-export interface PracticeQuestionsRequest extends QueryRequest {
+export interface PracticeQuestionsQueryRequest extends QueryRequest {
   queryType: QueryType.PRACTICE_QUESTIONS;
-  questionCount?: number;
-  difficulty?: 'basic' | 'medium' | 'advanced';
-  questionTypes?: string[];
+  additionalParams: PracticeQuestionsParams;
 }
 
-export interface KnowledgeGapRequest extends QueryRequest {
+export interface KnowledgeGapQueryRequest extends QueryRequest {
   queryType: QueryType.KNOWLEDGE_GAP;
-  pastInteractionsCount?: number;
+  additionalParams: KnowledgeGapParams;
+}
+
+// Type guard functions to help with type checking
+export function isStudyGuideParams(params: AdditionalParams): params is StudyGuideParams {
+  return (params as StudyGuideParams).detailLevel !== undefined || 
+         (params as StudyGuideParams).format !== undefined;
+}
+
+export function isPracticeQuestionsParams(params: AdditionalParams): params is PracticeQuestionsParams {
+  return (params as PracticeQuestionsParams).questionCount !== undefined || 
+         (params as PracticeQuestionsParams).questionTypes !== undefined;
+}
+
+export function isKnowledgeGapParams(params: AdditionalParams): params is KnowledgeGapParams {
+  return (params as KnowledgeGapParams).pastInteractionsCount !== undefined;
 }

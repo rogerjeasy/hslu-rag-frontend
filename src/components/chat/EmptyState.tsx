@@ -1,285 +1,161 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { MessageSquare, Send, BookOpen, Sparkles, Lightbulb, ChevronRight } from 'lucide-react';
+import React from 'react';
+import { MessageCircle, BookOpen, FileQuestion, BrainCircuit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Course } from '@/types/course.types';
-import { cn } from '@/lib/utils';
-import { getCourseCardClasses, enhanceCourseForUI } from '@/lib/course-colors';
+import { QueryType } from '@/types/query';
 
-export interface EmptyStateProps {
-  course: Course | null;
-  onStartConversation: (message: string) => void;
-  isMobile?: boolean;
+interface EmptyStateProps {
+  courseId?: string | undefined;  
+  onStartConversation: (content: string, queryType?: QueryType) => void | Promise<void>;
 }
 
-export default function EmptyState({
-  course,
-  onStartConversation,
-  // isMobile = false
-}: EmptyStateProps) {
-  const [selectedPrompt, setSelectedPrompt] = useState<string | null>(null);
-  const [enhancedCourse, setEnhancedCourse] = useState<Course | null>(null);
+const EmptyState: React.FC<EmptyStateProps> = ({ courseId, onStartConversation }) => {
+  // Example prompts for each query type
+  const examplePrompts = {
+    [QueryType.QUESTION_ANSWERING]: [
+      "What is the difference between supervised and unsupervised learning?",
+      "Explain the concept of overfitting in machine learning.",
+      "How does backpropagation work in neural networks?",
+      "What are the advantages of decision trees over other models?"
+    ],
+    [QueryType.STUDY_GUIDE]: [
+      "Create a study guide for classification algorithms.",
+      "Generate a summary of key concepts in data preprocessing.",
+      "Make a study outline for understanding deep learning fundamentals.",
+      "Prepare a concise review of clustering techniques."
+    ],
+    [QueryType.PRACTICE_QUESTIONS]: [
+      "Generate practice questions about regression analysis.",
+      "Create a quiz on feature selection methods.",
+      "Make a set of multiple choice questions about ensemble learning.",
+      "Provide practice problems on dimensionality reduction."
+    ],
+    [QueryType.KNOWLEDGE_GAP]: [
+      "What topics should I focus on to understand reinforcement learning better?",
+      "Identify gaps in my understanding of statistical hypothesis testing.",
+      "What concepts am I missing to fully grasp neural networks?",
+      "Help me identify weak areas in my understanding of data visualization."
+    ]
+  };
 
-  // Enhance course with UI properties if needed
-  useEffect(() => {
-    if (course) {
-      // Create a compatible input object for enhanceCourseForUI
-      const courseInput = {
-        code: course.code,
-        name: course.name,
-        description: course.description,
-        color: course.color,
-        icon: typeof course.icon === 'string' ? course.icon : undefined,
-        topics: course.topics,
-        sampleQuestion: course.sampleQuestion,
-        difficulty: course.difficulty,
-        highlights: course.highlights,
-        credits: course.credits,
-        instructor: course.instructor,
-        semester: course.semester
-      };
-      
-      // The enhanced course will have all UI properties set
-      const enhanced = enhanceCourseForUI(courseInput);
-      
-      // Merge the enhanced properties back with the original course
-      setEnhancedCourse({
-        ...course,
-        color: enhanced.color,
-        topics: enhanced.topics,
-        sampleQuestion: enhanced.sampleQuestion,
-        difficulty: enhanced.difficulty,
-        highlights: enhanced.highlights
-      });
-    } else {
-      setEnhancedCourse(null);
-    }
-  }, [course]);
-
-  // Default suggestions if no course is selected
-  const defaultSuggestions = [
+  // Card data for each query type
+  const queryTypeCards = [
     {
-      text: "Help me understand a complex topic",
-      prompt: "I'd like to understand the concept of machine learning. Can you explain it in simple terms?"
+      type: QueryType.QUESTION_ANSWERING,
+      title: "Ask a Question",
+      description: "Get answers to specific questions about course material",
+      icon: <MessageCircle className="h-6 w-6" />,
+      bgColor: "bg-blue-50 dark:bg-blue-900/30",
+      iconColor: "text-blue-600 dark:text-blue-400",
+      borderColor: "border-blue-200 dark:border-blue-800",
+      hoverColor: "hover:bg-blue-100 dark:hover:bg-blue-900/50"
     },
     {
-      text: "Create a study plan for me",
-      prompt: "Can you create a 4-week study plan to help me master basic calculus?"
+      type: QueryType.STUDY_GUIDE,
+      title: "Create Study Guide",
+      description: "Generate comprehensive summaries and study materials",
+      icon: <BookOpen className="h-6 w-6" />,
+      bgColor: "bg-green-50 dark:bg-green-900/30",
+      iconColor: "text-green-600 dark:text-green-400",
+      borderColor: "border-green-200 dark:border-green-800",
+      hoverColor: "hover:bg-green-100 dark:hover:bg-green-900/50"
     },
     {
-      text: "Guide me through a problem",
-      prompt: "I need help solving this problem: If a rectangle has a perimeter of 30 units and a width of 5 units, what is its area?"
+      type: QueryType.PRACTICE_QUESTIONS,
+      title: "Generate Practice Questions",
+      description: "Create quizzes and practice problems for self-assessment",
+      icon: <FileQuestion className="h-6 w-6" />,
+      bgColor: "bg-purple-50 dark:bg-purple-900/30",
+      iconColor: "text-purple-600 dark:text-purple-400",
+      borderColor: "border-purple-200 dark:border-purple-800",
+      hoverColor: "hover:bg-purple-100 dark:hover:bg-purple-900/50"
+    },
+    {
+      type: QueryType.KNOWLEDGE_GAP,
+      title: "Identify Knowledge Gaps",
+      description: "Find areas where you need additional study and focus",
+      icon: <BrainCircuit className="h-6 w-6" />,
+      bgColor: "bg-amber-50 dark:bg-amber-900/30",
+      iconColor: "text-amber-600 dark:text-amber-400",
+      borderColor: "border-amber-200 dark:border-amber-800",
+      hoverColor: "hover:bg-amber-100 dark:hover:bg-amber-900/50"
     }
   ];
 
-  // Course-specific sample questions generated from topics
-  const courseSuggestions = enhancedCourse?.topics?.map(topic => ({
-    text: topic,
-    prompt: `Can you explain ${topic} in the context of ${enhancedCourse.name}?`
-  })) || [];
-  
-  // Additional course-specific prompts
-  const moreSuggestions = enhancedCourse ? [
-    {
-      text: `Introduce me to ${enhancedCourse.name}`,
-      prompt: `Give me a comprehensive introduction to ${enhancedCourse.name}. What are the key concepts I should understand?`
-    },
-    {
-      text: "Quiz me on this subject",
-      prompt: `Create a 5-question quiz on ${enhancedCourse.name} to test my knowledge.`
-    },
-    {
-      text: enhancedCourse.sampleQuestion || "Help me understand a concept",
-      prompt: enhancedCourse.sampleQuestion || `Explain a fundamental concept in ${enhancedCourse.name}`
-    }
-  ] : [];
-
-  // Combine suggestions based on whether a course is selected
-  const suggestions = enhancedCourse 
-    ? [...courseSuggestions.slice(0, 3), ...moreSuggestions]
-    : defaultSuggestions;
-
-  // Animation variants for staggered animations
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
+  // Handler for selecting an example prompt
+  const handlePromptClick = (prompt: string, queryType: QueryType) => {
+    onStartConversation(prompt, queryType);
   };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0 }
-  };
-
-  // Get card classes based on course color
-  const cardClasses = enhancedCourse?.color 
-    ? getCourseCardClasses(enhancedCourse.color)
-    : {
-        container: "border-blue-200/50 bg-blue-50/30",
-        icon: "bg-blue-100/50 text-blue-600",
-        badge: "bg-blue-100 text-blue-700",
-        highlight: "text-blue-600"
-      };
 
   return (
-    <div className="h-full flex flex-col items-center justify-center px-4 py-8 md:px-8 lg:px-12 overflow-y-auto">
-      <motion.div 
-        className="max-w-3xl w-full flex flex-col items-center justify-center space-y-8"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        {/* Header Section */}
-        <div className="text-center space-y-4 max-w-lg mx-auto">
-          <div className="mb-6 flex justify-center">
-            {enhancedCourse ? (
-              <div className={cn(
-                "p-3 rounded-full",
-                cardClasses.icon,
-                "flex items-center justify-center"
-              )}>
-                {enhancedCourse.icon || <BookOpen className="h-8 w-8" />}
-              </div>
-            ) : (
-              <div className="p-3 rounded-full bg-primary/10 text-primary flex items-center justify-center">
-                <MessageSquare className="h-8 w-8" />
-              </div>
-            )}
-          </div>
-          
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-            {enhancedCourse 
-              ? `Ready to discuss ${enhancedCourse.name}`
-              : "Start a new conversation"}
+    <div className="flex flex-col items-center justify-center h-full px-4 py-8 overflow-y-auto">
+      <div className="max-w-3xl w-full space-y-8">
+        {/* Welcome heading */}
+        <div className="text-center space-y-2">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Welcome to your AI-powered Study Assistant
           </h1>
-          
-          <p className="text-muted-foreground text-sm sm:text-base">
-            {enhancedCourse 
-              ? enhancedCourse.description || "Ask questions, get explanations, or explore concepts related to this course."
-              : "Select a course and ask anything. Get help with assignments, explanations of concepts, or create study materials."}
+          <p className="text-gray-600 dark:text-gray-400">
+            Get personalized help with your coursework, generate study materials, and practice your knowledge
           </p>
         </div>
 
-        {/* Course Info Section - Only show when course is selected */}
-        {enhancedCourse && (
-          <motion.div 
-            className={cn(
-              "w-full rounded-lg border p-4 shadow-sm",
-              cardClasses.container
-            )}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2 }}
-          >
-            <div className="flex items-start gap-4">
-              <div className={cn(
-                "rounded-md p-2.5 flex-shrink-0 hidden sm:flex",
-                cardClasses.icon
-              )}>
-                {enhancedCourse.icon || <BookOpen className="h-5 w-5" />}
-              </div>
-              
-              <div className="flex-1 space-y-2">
-                <div className="flex justify-between items-start">
-                  <div className="flex flex-col">
-                    <h3 className="font-medium text-foreground">{enhancedCourse.name}</h3>
-                    <span className="text-xs text-muted-foreground">{enhancedCourse.code}</span>
-                  </div>
-                  <span className={cn(
-                    "text-xs px-2 py-0.5 rounded-full",
-                    cardClasses.badge
-                  )}>
-                    {enhancedCourse.difficulty || enhancedCourse.status}
-                  </span>
+        {/* Query type cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {queryTypeCards.map((card) => (
+            <div 
+              key={card.type}
+              className={`border ${card.borderColor} rounded-lg ${card.bgColor} p-5 transition-colors ${card.hoverColor}`}
+            >
+              <div className="flex items-start gap-4">
+                <div className={`rounded-full p-3 ${card.bgColor} ${card.iconColor}`}>
+                  {card.icon}
                 </div>
-                
-                {enhancedCourse.highlights && enhancedCourse.highlights.length > 0 && (
-                  <ul className="space-y-1.5 text-sm text-muted-foreground">
-                    {enhancedCourse.highlights.slice(0, 3).map((highlight, index) => (
-                      <li key={index} className="flex items-start gap-2">
-                        <ChevronRight className={cn("h-4 w-4 flex-shrink-0 mt-0.5", cardClasses.highlight)} />
-                        <span>{highlight}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                <div>
+                  <h3 className="font-medium text-gray-900 dark:text-white">{card.title}</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    {card.description}
+                  </p>
+                </div>
+              </div>
+
+              {/* Example prompts for this card */}
+              <div className="mt-4 space-y-2">
+                {examplePrompts[card.type].slice(0, 2).map((prompt, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handlePromptClick(prompt, card.type)}
+                    className="w-full text-left text-sm p-2 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    "{prompt}"
+                  </button>
+                ))}
               </div>
             </div>
-          </motion.div>
-        )}
+          ))}
+        </div>
 
-        {/* Suggestions Section */}
-        <div className="w-full">
-          <div className="flex items-center gap-2 mb-3">
-            <Lightbulb className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-medium text-foreground">Suggested prompts</h2>
+        {/* Course-specific guidance */}
+        {courseId && (
+          <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+            <h3 className="font-medium text-gray-900 dark:text-white mb-2">
+              Currently exploring:
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              You can ask questions specific to your current course or explore other topics using the subject selector above.
+            </p>
           </div>
-          
-          <motion.div 
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3"
-            variants={containerVariants}
-            initial="hidden"
-            animate="show"
-          >
-            {suggestions.map((suggestion, index) => (
-              <motion.div 
-                key={index}
-                variants={itemVariants}
-                className={cn(
-                  "border rounded-lg p-4 transition-all duration-200 cursor-pointer",
-                  "hover:border-primary/60 hover:bg-primary/5 hover:shadow-sm",
-                  selectedPrompt === suggestion.prompt 
-                    ? "border-primary/60 bg-primary/5 shadow-sm" 
-                    : "border-border bg-background"
-                )}
-                onClick={() => setSelectedPrompt(suggestion.prompt)}
-              >
-                <div className="flex items-start gap-3">
-                  <Sparkles className={cn(
-                    "h-5 w-5 flex-shrink-0 mt-0.5",
-                    selectedPrompt === suggestion.prompt ? "text-primary" : "text-muted-foreground"
-                  )} />
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{suggestion.text}</p>
-                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{suggestion.prompt}</p>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-
-        {/* Send Button */}
-        <div className="w-full flex justify-center mt-4">
-          <Button 
-            onClick={() => selectedPrompt && onStartConversation(selectedPrompt)}
-            disabled={!selectedPrompt || !enhancedCourse}
-            className="gap-2 px-8 py-6 h-auto sm:min-w-[200px] shadow-sm"
-            size="lg"
-          >
-            <Send className="h-4 w-4" />
-            <span>{enhancedCourse ? "Ask this question" : "Select a course"}</span>
-          </Button>
-        </div>
-
-        {/* No Course Selected Hint */}
-        {!enhancedCourse && (
-          <motion.p 
-            className="text-xs text-muted-foreground text-center"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-          >
-            Select a course from the dropdown above to get started
-          </motion.p>
         )}
-      </motion.div>
+
+        {/* Tips and help */}
+        <div className="text-center space-y-1 text-sm text-gray-500 dark:text-gray-400">
+          <p>Type your question in the box below to get started</p>
+          <p>You can change the conversation type using the buttons at the bottom</p>
+        </div>
+      </div>
     </div>
   );
-}
+};
+
+export default EmptyState;

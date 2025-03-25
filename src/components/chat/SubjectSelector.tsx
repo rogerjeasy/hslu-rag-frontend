@@ -1,76 +1,139 @@
 "use client";
-
-import { useState } from 'react';
-import { Check, ChevronDown } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import React, { useState, useEffect } from 'react';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
-import { SubjectSelectorProps } from '@/types/chat';
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useCourseStore } from '@/store/courseStore';
 
-export default function SubjectSelector({ 
-  selectedSubject, 
-  onSubjectChange, 
-  subjects 
-}: SubjectSelectorProps) {
-  const [open, setOpen] = useState(false);
+interface SubjectSelectorProps {
+  courseId?: string;
+  onCourseChange?: (courseId: string) => void;
+  onModuleChange?: (moduleId: string) => void;
+}
+
+const SubjectSelector: React.FC<SubjectSelectorProps> = ({
+  courseId,
+  onCourseChange,
+  onModuleChange
+}) => {
+  // Get courses from store
+  const { 
+    courses, 
+    fetchCourses, 
+    isLoading, 
+    error 
+  } = useCourseStore();
+  
+  const [selectedCourse, setSelectedCourse] = useState<string | undefined>(courseId);
+  const [selectedModule, setSelectedModule] = useState<string | undefined>();
+  const [modules, setModules] = useState<Array<{ id: string, name: string }>>([]);
+
+  // Fetch courses when component mounts
+  useEffect(() => {
+    fetchCourses();
+  }, [fetchCourses]);
+
+  // Update selected course when courseId prop changes
+  useEffect(() => {
+    setSelectedCourse(courseId);
+  }, [courseId]);
+
+  // Fetch modules when course changes
+  useEffect(() => {
+    const fetchModules = async () => {
+      if (selectedCourse) {
+        try {
+          // In a real application, you would fetch modules for the selected course
+          // For now, we'll use a placeholder array since the API endpoint isn't specified
+          // This would typically come from another API endpoint or be included in the course details
+          
+          // Placeholder - replace with actual API call
+          setModules([
+            { id: `${selectedCourse}-1`, name: 'Introduction' },
+            { id: `${selectedCourse}-2`, name: 'Core Concepts' },
+            { id: `${selectedCourse}-3`, name: 'Advanced Topics' },
+          ]);
+          
+          // Example of how you might fetch modules in a real application:
+          // const courseDetails = await useCourseStore.getState().getCourse(selectedCourse);
+          // setModules(courseDetails.modules);
+        } catch (error) {
+          console.error('Error fetching modules:', error);
+        }
+      } else {
+        setModules([]);
+      }
+    };
+
+    fetchModules();
+  }, [selectedCourse]);
+
+  const handleCourseChange = (value: string) => {
+    setSelectedCourse(value);
+    setSelectedModule(undefined); // Reset module when course changes
+   
+    if (onCourseChange) {
+      onCourseChange(value);
+    }
+  };
+
+  const handleModuleChange = (value: string) => {
+    setSelectedModule(value);
+   
+    if (onModuleChange) {
+      onModuleChange(value);
+    }
+  };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button 
-          variant="outline" 
-          role="combobox"
-          aria-expanded={open}
-          className="w-[180px] justify-between font-normal"
-        >
-          {selectedSubject ? (
-            <span className="flex items-center gap-2">
-              {selectedSubject.icon && (
-                <span className="text-base">{selectedSubject.icon}</span>
-              )}
-              {selectedSubject.name}
-            </span>
+    <div className="flex flex-col sm:flex-row gap-1 sm:gap-2">
+      {/* Course Selector */}
+      <Select value={selectedCourse} onValueChange={handleCourseChange} disabled={isLoading}>
+        <SelectTrigger className="w-full sm:w-40 h-8 text-xs">
+          <SelectValue placeholder={isLoading ? "Loading..." : "Select Course"} />
+        </SelectTrigger>
+        <SelectContent>
+          {error ? (
+            <div className="p-2 text-sm text-red-500">Error loading courses</div>
           ) : (
-            "Select subject..."
+            <SelectGroup>
+              <SelectLabel>Courses</SelectLabel>
+              {courses.map(course => (
+                <SelectItem key={course.id} value={course.id} className="text-sm">
+                  {course.name}
+                </SelectItem>
+              ))}
+            </SelectGroup>
           )}
-          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[180px] p-0">
-        <div className="max-h-[300px] overflow-y-auto py-1">
-          {subjects.map((subject) => (
-            <div
-              key={subject.id}
-              className={cn(
-                "flex items-center gap-2 px-2 py-1.5 text-sm cursor-pointer hover:bg-muted",
-                selectedSubject?.id === subject.id && "bg-muted"
-              )}
-              onClick={() => {
-                onSubjectChange(subject);
-                setOpen(false);
-              }}
-            >
-              {subject.icon && (
-                <span className="text-base">{subject.icon}</span>
-              )}
-              <span className="flex-1">{subject.name}</span>
-              {selectedSubject?.id === subject.id && (
-                <Check className="h-4 w-4" />
-              )}
-            </div>
-          ))}
-          
-          {subjects.length === 0 && (
-            <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-              No subjects available
-            </div>
-          )}
-        </div>
-      </PopoverContent>
-    </Popover>
+        </SelectContent>
+      </Select>
+
+      {/* Module Selector - Only shown if a course is selected */}
+      {selectedCourse && (
+        <Select value={selectedModule} onValueChange={handleModuleChange}>
+          <SelectTrigger className="w-full sm:w-48 h-8 text-xs">
+            <SelectValue placeholder="Select Module" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              <SelectLabel>Modules</SelectLabel>
+              {modules.map(module => (
+                <SelectItem key={module.id} value={module.id} className="text-sm">
+                  {module.name}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      )}
+    </div>
   );
-}
+};
+
+export default SubjectSelector;
