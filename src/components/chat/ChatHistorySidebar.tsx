@@ -8,17 +8,17 @@ import { useRouter, usePathname } from 'next/navigation';
 import { ExtendedConversationSummary } from '@/types/conversation';
 import { QueryType } from '@/types/query';
 import SubjectSelector from './SubjectSelector';
-import { Plus, Search, MessageSquare, Trash2, Pin, BookOpen, PenSquare } from 'lucide-react';
+import { Plus, Search, MessageSquare, Trash2, Pin, BookOpen, PenSquare, Loader2, MoreVertical } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { motion } from "framer-motion";
 
@@ -35,6 +35,7 @@ const ChatHistorySidebar: React.FC<ChatHistorySidebarProps> = ({
   const pathname = usePathname();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('all');
+  const [isLoading, setIsLoading] = useState(false);
   
   const {
     // conversations,
@@ -47,7 +48,9 @@ const ChatHistorySidebar: React.FC<ChatHistorySidebarProps> = ({
   } = useConversationStore();
 
   useEffect(() => {
-    fetchConversations(selectedCourse || undefined);
+    setIsLoading(true);
+    fetchConversations(selectedCourse || undefined)
+      .finally(() => setIsLoading(false));
   }, [fetchConversations, selectedCourse]);
 
   useEffect(() => {
@@ -186,60 +189,59 @@ const ChatHistorySidebar: React.FC<ChatHistorySidebarProps> = ({
         isActive(conversation.id) && "bg-slate-200/80 dark:bg-slate-800/80 border-l-2 border-blue-500 shadow-sm"
       )}
     >
-      <div className="flex justify-between items-start gap-2">
+      <div className="flex justify-between items-start gap-2 mb-1">
         <div className="flex items-center min-w-0">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6 mr-1 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-800/50 rounded-full"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreVertical className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-48">
+              <DropdownMenuItem 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleTogglePin(e as unknown as React.MouseEvent, conversation);
+                }}
+                className="cursor-pointer"
+              >
+                <Pin className={cn(
+                  "h-4 w-4 mr-2 transition-all duration-200",
+                  conversation.pinned
+                    ? "fill-amber-500 text-amber-500"
+                    : "text-slate-400"
+                )} />
+                {conversation.pinned ? 'Unpin' : 'Pin'}
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteConversation(e as unknown as React.MouseEvent, conversation.id);
+                }}
+                className="cursor-pointer text-red-500 hover:text-red-600 focus:text-red-600"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           {renderQueryTypeIcon(conversation.queryType)}
           <h3 className="text-sm font-medium truncate max-w-[150px] sm:max-w-[180px] lg:max-w-[200px] xl:max-w-[220px]">
             {conversation.title}
           </h3>
         </div>
-        <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-6 w-6 hover:bg-slate-300/50 dark:hover:bg-slate-700/50 rounded-full"
-                  onClick={(e) => handleTogglePin(e, conversation)}
-                >
-                  <Pin className={cn(
-                    "h-3.5 w-3.5 transition-all duration-200",
-                    conversation.pinned
-                      ? "fill-amber-500 text-amber-500"
-                      : "text-slate-400"
-                  )} />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="left">
-                {conversation.pinned ? 'Unpin' : 'Pin'}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-6 w-6 text-red-500 hover:text-red-600 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-full"
-                  onClick={(e) => handleDeleteConversation(e, conversation.id)}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="left">Delete</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
       </div>
       
-      <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-1">
+      <p className="text-xs text-slate-500 dark:text-slate-400 truncate ml-7">
         {conversation.lastMessagePreview || 'No messages'}
       </p>
       
-      <div className="flex justify-between items-center mt-2">
+      <div className="flex justify-between items-center mt-2 ml-7">
         {conversation.courseId && (
           <Badge variant="outline" className="text-xs px-1.5 py-0 h-5 bg-slate-100 dark:bg-slate-800 truncate max-w-[120px]">
             {conversation.courseId}
@@ -255,7 +257,17 @@ const ChatHistorySidebar: React.FC<ChatHistorySidebarProps> = ({
   // Render content for a specific tab
   const renderTabContent = (tabValue: string) => (
     <TabsContent value={tabValue} className="mt-2 p-0 overflow-hidden">
-      {filteredByTab.length === 0 ? (
+      {isLoading ? (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
+          className="p-8 flex flex-col items-center justify-center text-slate-500 dark:text-slate-400"
+        >
+          <Loader2 className="h-8 w-8 animate-spin mb-2 text-blue-500" />
+          <p className="text-sm">Loading conversations...</p>
+        </motion.div>
+      ) : filteredByTab.length === 0 ? (
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

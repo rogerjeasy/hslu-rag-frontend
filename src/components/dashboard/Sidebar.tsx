@@ -6,13 +6,17 @@ import { usePathname } from 'next/navigation';
 import {
   BookOpen, 
   GraduationCap, 
-  Home, 
-  BookMarked, 
-  FileQuestion, 
   Settings, 
   LogOut,
   ChevronRight,
-  X
+  X,
+  Home,
+  MessageSquare,
+  BookMarked,
+  CheckSquare,
+  BarChart3,
+  Menu,
+  Info,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -20,7 +24,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import { useLogout } from '@/store/userStore';
+import { useUserStore, useLogout } from '@/store/userStore';
 
 interface SidebarProps {
   open: boolean;
@@ -38,18 +42,23 @@ export default function Sidebar({ open, onOpenChange }: SidebarProps) {
   const pathname = usePathname();
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
   const isDesktop = useMediaQuery('(min-width: 1024px)');
+  
+  // Get user state from Zustand store using individual selectors - same as in Header
+  const user = useUserStore(state => state.user);
+  const isAuthenticated = useUserStore(state => state.isAuthenticated);
 
-  // Navigation items with their icons
-  const navItems: NavItem[] = [
+  // Navigation items with conditional display based on authentication
+  const navItems: NavItem[] = isAuthenticated && user ? [
+    // Authenticated user menu items
     {
       title: "Dashboard",
       href: "/dashboard",
-      icon: <Home className="h-5 w-5" />
+      icon: <Home className="h-5 w-5 text-primary" />
     },
     {
       title: "Courses",
       href: "/courses",
-      icon: <BookOpen className="h-5 w-5" />,
+      icon: <BookOpen className="h-5 w-5 text-primary" />,
       submenu: [
         { title: "Machine Learning", href: "/courses/machine-learning" },
         { title: "Data Science 101", href: "/courses/data-science-101" },
@@ -57,24 +66,54 @@ export default function Sidebar({ open, onOpenChange }: SidebarProps) {
       ]
     },
     {
+      title: "Chat Assistant",
+      href: "/chat",
+      icon: <MessageSquare className="h-5 w-5 text-primary" />
+    },
+    {
       title: "Study Guides",
       href: "/study-guides",
-      icon: <BookMarked className="h-5 w-5" />
+      icon: <BookMarked className="h-5 w-5 text-primary" />
     },
     {
       title: "Practice Questions",
-      href: "/practice",
-      icon: <FileQuestion className="h-5 w-5" />
+      href: "/practice-questions",
+      icon: <CheckSquare className="h-5 w-5 text-primary" />
     },
     {
-      title: "Exam Preparation",
-      href: "/exam-prep",
-      icon: <GraduationCap className="h-5 w-5" />
+      title: "Knowledge Gap Analytics",
+      href: "/knowledge-gaps",
+      icon: <BarChart3 className="h-5 w-5 text-primary" />
     },
     {
       title: "Settings",
       href: "/settings",
-      icon: <Settings className="h-5 w-5" />
+      icon: <Settings className="h-5 w-5 text-primary" />
+    }
+  ] : [
+    // Non-authenticated user menu items
+    {
+      title: "Home",
+      href: "/",
+      icon: <Home className="h-5 w-5 text-primary" />
+    },
+    {
+      title: "AI Learning Hub",
+      href: "/learning-hub",
+      icon: <GraduationCap className="h-5 w-5 text-primary" />,
+      submenu: [
+        { title: "AI Study Assistant", href: "/learning-hub/ai-assistant" },
+        { title: "Study Guide Generator", href: "/learning-hub/guide-generator" },
+        { title: "Practice Assessment", href: "/learning-hub/practice-assessment" },
+        { title: "Knowledge Analytics", href: "/learning-hub/analytics" },
+        { title: "Concept Explorer", href: "/learning-hub/concept-explorer" },
+        { title: "Collaborative Learning", href: "/learning-hub/collaborative" }
+      ]
+    },
+    {
+      title: "About Us",
+      href: "/about",
+      icon: <Info className="h-5 w-5 text-primary" />
     }
   ];
 
@@ -100,8 +139,42 @@ export default function Sidebar({ open, onOpenChange }: SidebarProps) {
     visible: { x: 0 }
   };
 
+  // Get current page title from pathname
+  const getCurrentPageTitle = () => {
+    const activeItem = navItems.find(item => 
+      pathname === item.href || item.submenu?.some(subItem => pathname === subItem.href)
+    );
+    
+    if (!activeItem) return "Dashboard";
+    
+    if (activeItem.submenu) {
+      const activeSubItem = activeItem.submenu.find(subItem => pathname === subItem.href);
+      return activeSubItem ? activeSubItem.title : activeItem.title;
+    }
+    
+    return activeItem.title;
+  };
+
   return (
     <>
+      {/* Mobile Header Bar (only show when sidebar is closed on mobile) */}
+      {!isDesktop && !open && (
+        <div className="fixed top-0 left-0 right-0 z-30 flex items-center px-4 h-16 bg-card border-b shadow-sm">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="mr-4 text-orange-500" // Matching the orange color from header
+            onClick={() => onOpenChange(true)}
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+          <div className="flex items-center">
+            <GraduationCap className="h-6 w-6 text-primary mr-2" />
+            <span className="font-semibold">{getCurrentPageTitle()}</span>
+          </div>
+        </div>
+      )}
+      
       {/* Mobile Overlay */}
       <AnimatePresence>
         {open && !isDesktop && (
@@ -130,7 +203,8 @@ export default function Sidebar({ open, onOpenChange }: SidebarProps) {
             open={open} 
             expandedItem={expandedItem} 
             toggleSubmenu={toggleSubmenu} 
-            pathname={pathname} 
+            pathname={pathname}
+            isAuthenticated={isAuthenticated} 
           />
         </div>
       ) : (
@@ -148,7 +222,7 @@ export default function Sidebar({ open, onOpenChange }: SidebarProps) {
               <div className="flex justify-between items-center p-4 border-b">
                 <div className="flex items-center gap-2 font-semibold">
                   <GraduationCap className="h-6 w-6 text-primary" />
-                  <span>HSLU Exam Prep</span>
+                  <span>HSLU Data Science</span>
                 </div>
                 <Button 
                   variant="ghost" 
@@ -163,7 +237,8 @@ export default function Sidebar({ open, onOpenChange }: SidebarProps) {
                 open={true} // Always fully open on mobile
                 expandedItem={expandedItem} 
                 toggleSubmenu={toggleSubmenu} 
-                pathname={pathname} 
+                pathname={pathname}
+                isAuthenticated={isAuthenticated}
               />
             </motion.div>
           )}
@@ -179,15 +254,18 @@ function SidebarContent({
   open, 
   expandedItem, 
   toggleSubmenu, 
-  pathname 
+  pathname,
+  isAuthenticated
 }: { 
   navItems: NavItem[],
   open: boolean,
   expandedItem: string | null,
   toggleSubmenu: (title: string) => void,
-  pathname: string
+  pathname: string,
+  isAuthenticated: boolean
 }) {
   const handleLogout = useLogout();
+  
   return (
     <>
       {/* Sidebar Header - Only show on desktop when not mobile view */}
@@ -195,7 +273,7 @@ function SidebarContent({
         <div className="py-3 px-4 border-b hidden lg:block">
           <div className="flex items-center gap-2 font-semibold">
             <GraduationCap className="h-6 w-6 text-primary" />
-            <span>HSLU Exam Prep</span>
+            <span>HSLU Data Science</span>
           </div>
         </div>
       )}
@@ -211,23 +289,26 @@ function SidebarContent({
               const isExpanded = expandedItem === item.title;
 
               return (
-                <div key={item.title}>
+                <div key={item.title} className="relative group">
                   {/* Main nav item */}
                   {open ? (
                     <Button
                       asChild={!hasSubmenu}
                       variant={isActive ? "secondary" : "ghost"}
                       className={cn(
-                        "w-full justify-between mb-1",
-                        isActive && "font-medium"
+                        "w-full justify-between mb-1 transition-all",
+                        isActive && "font-medium bg-primary/10",
+                        !isActive && "hover:bg-primary/5"
                       )}
                       onClick={hasSubmenu ? () => toggleSubmenu(item.title) : undefined}
                     >
                       {hasSubmenu ? (
                         <div className="flex items-center justify-between w-full">
-                          <div className="flex items-center">
-                            {item.icon}
-                            <span className="ml-3">{item.title}</span>
+                          <div className="flex items-center gap-3">
+                            <div className="flex-shrink-0 flex items-center justify-center">
+                              {item.icon}
+                            </div>
+                            <span>{item.title}</span>
                           </div>
                           <ChevronRight className={cn(
                             "h-4 w-4 transition-transform",
@@ -236,8 +317,12 @@ function SidebarContent({
                         </div>
                       ) : (
                         <Link href={item.href} className="flex items-center w-full">
-                          {item.icon}
-                          <span className="ml-3">{item.title}</span>
+                          <div className="flex items-center gap-3">
+                            <div className="flex-shrink-0 flex items-center justify-center">
+                              {item.icon}
+                            </div>
+                            <span>{item.title}</span>
+                          </div>
                         </Link>
                       )}
                     </Button>
@@ -248,17 +333,28 @@ function SidebarContent({
                           asChild
                           variant={isActive ? "secondary" : "ghost"}
                           size="icon"
-                          className="w-full h-10 mb-1"
+                          className={cn(
+                            "w-full h-12 mb-1 transition-all flex items-center justify-center",
+                            isActive && "bg-primary/10",
+                            !isActive && "hover:bg-primary/5"
+                          )}
                         >
-                          <Link href={item.href}>
-                            {item.icon}
+                          <Link href={hasSubmenu ? item.submenu?.[0].href || item.href : item.href}>
+                            <div className="flex-shrink-0 flex items-center justify-center">
+                              {item.icon}
+                            </div>
                           </Link>
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent side="right">
+                      <TooltipContent side="right" className="font-medium">
                         {item.title}
                       </TooltipContent>
                     </Tooltip>
+                  )}
+
+                  {/* Active indicator */}
+                  {isActive && (
+                    <div className="absolute left-0 top-0 h-12 w-1 bg-primary rounded-r-full" />
                   )}
 
                   {/* Submenu items */}
@@ -270,25 +366,29 @@ function SidebarContent({
                           animate={{ height: "auto", opacity: 1 }}
                           exit={{ height: 0, opacity: 0 }}
                           transition={{ duration: 0.3 }}
-                          className="overflow-hidden pl-9 space-y-1"
+                          className="overflow-hidden pl-10 space-y-1"
                         >
                           {item.submenu.map((subItem) => {
                             const isSubActive = pathname === subItem.href;
                             
                             return (
-                              <li key={subItem.title}>
+                              <li key={subItem.title} className="relative">
                                 <Button
                                   asChild
                                   variant={isSubActive ? "secondary" : "ghost"}
                                   className={cn(
-                                    "w-full justify-start h-9",
-                                    isSubActive && "font-medium"
+                                    "w-full justify-start h-9 text-sm",
+                                    isSubActive ? "font-medium bg-primary/10" : "hover:bg-primary/5",
+                                    "transition-all"
                                   )}
                                 >
-                                  <Link href={subItem.href}>
-                                    {subItem.title}
+                                  <Link href={subItem.href} className="flex items-center">
+                                    <span className="ml-1">{subItem.title}</span>
                                   </Link>
                                 </Button>
+                                {isSubActive && (
+                                  <div className="absolute left-0 top-0 h-9 w-1 bg-primary rounded-r-full" />
+                                )}
                               </li>
                             );
                           })}
@@ -303,19 +403,80 @@ function SidebarContent({
         </TooltipProvider>
       </ScrollArea>
 
-      {/* Sidebar Footer */}
+      {/* Sidebar Footer - Show Login/Register for non-authenticated users */}
       <div className="p-3 mt-auto border-t">
-        <Button 
-          variant="ghost" 
-          className={cn(
-            "w-full justify-start",
-            open ? "px-3" : "px-0 justify-center"
-          )}
-          onClick={handleLogout}
-        >
-          <LogOut className="h-5 w-5" />
-          {open && <span className="ml-3">Logout</span>}
-        </Button>
+        {isAuthenticated ? (
+          // Logout button for authenticated users
+          <Button 
+            variant="ghost" 
+            className={cn(
+              "w-full transition-all",
+              open ? "justify-start px-3" : "justify-center",
+              "hover:bg-destructive/10 hover:text-destructive"
+            )}
+            onClick={handleLogout}
+          >
+            {open ? (
+              <div className="flex items-center gap-3">
+                <LogOut className="h-5 w-5" />
+                <span>Logout</span>
+              </div>
+            ) : (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center justify-center">
+                    <LogOut className="h-5 w-5" />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="right">Logout</TooltipContent>
+              </Tooltip>
+            )}
+          </Button>
+        ) : (
+          // Login/Register buttons for non-authenticated users
+          <div className={cn("space-y-2", !open && "flex flex-col items-center")}>
+            <Link href="/login" className="w-full">
+              <Button 
+                variant="ghost" 
+                className={cn(
+                  "w-full transition-all bg-green-500 text-white hover:bg-green-600",
+                  !open && "h-10 w-10 p-0"
+                )}
+              >
+                {open ? (
+                  <span>Login</span>
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>L</span>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">Login</TooltipContent>
+                  </Tooltip>
+                )}
+              </Button>
+            </Link>
+            <Link href="/register" className="w-full">
+              <Button 
+                variant="default" 
+                className={cn(
+                  "w-full transition-all",
+                  !open && "h-10 w-10 p-0"
+                )}
+              >
+                {open ? (
+                  <span>Register</span>
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>R</span>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">Register</TooltipContent>
+                  </Tooltip>
+                )}
+              </Button>
+            </Link>
+          </div>
+        )}
       </div>
     </>
   );
