@@ -1,4 +1,3 @@
-// src/components/ui/Header.tsx
 'use client'
 
 import { useState, useEffect } from "react"
@@ -61,7 +60,10 @@ export function Header() {
       {/* Added px-4 or px-6 to ensure spacing from edges */}
       <div className="container mx-auto px-4 md:px-6 max-w-7xl flex h-16 items-center justify-between">
         <div className="flex items-center gap-x-4">
-          <MobileNav />
+          {/* Mobile Nav - With fixed orange color */}
+          <div className="relative z-20 sm:hidden text-orange-500">
+            <MobileNav />
+          </div>
           <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
             <motion.div
               initial={{ scale: 0.95 }}
@@ -145,15 +147,23 @@ export function Header() {
               </DropdownMenu>
             </motion.div>
           ) : (
-            // User is not logged in - show login and register buttons
+            // User is not logged in - show login and register buttons with mobile-specific styling
             <div className="flex items-center gap-x-3">
               <Link href="/login">
-                <Button variant="ghost" size="sm" className="hover:bg-blue-50">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="bg-green-500 text-white hover:bg-green-600"
+                >
                   Login
                 </Button>
               </Link>
               <Link href="/register">
-                <Button variant="default" size="sm" className="bg-primary hover:bg-primary/90">
+                <Button 
+                  variant="default" 
+                  size="sm" 
+                  className="bg-primary hover:bg-primary/90"
+                >
                   Register
                 </Button>
               </Link>
