@@ -9,8 +9,9 @@ import { CourseManagement } from '@/components/application-management/CourseMana
 import { DashboardOverview } from '@/components/application-management/DashboardOverview'
 import { useUserStore } from '@/store/userStore'
 import { useRouter, usePathname } from 'next/navigation'
+import StatisticsAdminPanel from './StatisticsAdminPanel';
 
-export type AdminView = 'dashboard' | 'users' | 'courses' | 'faq' | 'files'
+export type AdminView = 'dashboard' | 'users' | 'courses' | 'faq' | 'files' | 'statistics'
 
 export default function ApplicationManagementPage() {
   const [currentView, setCurrentView] = useState<AdminView>('dashboard')
@@ -25,7 +26,7 @@ export default function ApplicationManagementPage() {
       const section = pathname.split('/').pop() as AdminView | undefined
       
       // If it's a valid section, set it as the current view
-      if (section && ['dashboard', 'users', 'courses', 'faq', 'files'].includes(section)) {
+      if (section && ['dashboard', 'users', 'courses', 'faq', 'files', 'statistics'].includes(section)) {
         setCurrentView(section)
       }
     }
@@ -68,6 +69,8 @@ export default function ApplicationManagementPage() {
         return <FaqManagement />
       case 'files':
         return <FileManagement />
+      case 'statistics':
+        return <StatisticsAdminPanel />
       default:
         return <DashboardOverview />
     }

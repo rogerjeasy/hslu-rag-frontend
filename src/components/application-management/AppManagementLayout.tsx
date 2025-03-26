@@ -97,6 +97,12 @@ export function AppManagementLayout({
       label: 'File Management',
       icon: FolderOpen,
       description: 'Upload and manage course files'
+    },
+    {
+      id: 'statistics',
+      label: 'Statistics',
+      icon: LayoutDashboard,
+      description: 'View detailed application statistics'
     }
   ]
 

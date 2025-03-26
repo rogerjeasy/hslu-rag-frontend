@@ -1,13 +1,15 @@
-// src/components/dashboard/CourseCards.tsx
 "use client";
 
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
+import { useRouter } from 'next/navigation';
+import { useCourseStore } from '@/store/courseStore';
+import CourseCard from './CourseCard';
+import { AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Clock } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 
+// Animation variants for container
 const containerVariants = {
   hidden: { opacity: 0 },
   show: {
@@ -18,87 +20,98 @@ const containerVariants = {
   }
 };
 
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.4 } }
-};
-
 export default function CourseCards() {
-  // Mock course data
-  const courses = [
-    {
-      id: 1,
-      title: "Machine Learning",
-      description: "Fundamentals of machine learning algorithms and applications",
-      progress: 75,
-      lastStudied: "2 days ago",
-      timeSpent: "12.5h",
-      badgeText: "Active",
-      badgeVariant: "default" as const,
-    },
-    {
-      id: 2,
-      title: "Data Science 101",
-      description: "Introduction to data science principles and methodologies",
-      progress: 90,
-      lastStudied: "Yesterday",
-      timeSpent: "15h",
-      badgeText: "Advanced",
-      badgeVariant: "secondary" as const,
-    },
-    {
-      id: 3,
-      title: "Big Data Analytics",
-      description: "Processing and analyzing large-scale data sets",
-      progress: 45,
-      lastStudied: "1 week ago",
-      timeSpent: "5h",
-      badgeText: "New",
-      badgeVariant: "outline" as const,
-    }
-  ];
-
+  const router = useRouter();
+  const { courses, isLoading, error, fetchCourses } = useCourseStore();
+  const [showAll, setShowAll] = useState(false);
+  
+  // Fetch courses on component mount
+  useEffect(() => {
+    fetchCourses();
+  }, [fetchCourses]);
+  
+  // Handle continue button click
+  const handleContinue = (courseId: string) => {
+    router.push(`/courses/${courseId}`);
+  };
+  
+  // Show only active courses, limit to first 3 unless showAll is true
+  const filteredCourses = courses
+    .filter(course => course.status?.toLowerCase() !== 'archived')
+    .slice(0, showAll ? undefined : 3);
+  
+  if (isLoading) {
+    return (
+      <div>
+        <h2 className="text-xl font-semibold mb-4">My Courses</h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-[280px]">
+              <Skeleton className="h-full w-full" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <div>
+        <h2 className="text-xl font-semibold mb-4">My Courses</h2>
+        <div className="bg-destructive/10 p-6 rounded-lg flex flex-col items-center justify-center">
+          <AlertCircle className="h-8 w-8 text-destructive mb-2" />
+          <p className="text-destructive font-medium mb-2">Unable to load your courses</p>
+          <p className="text-sm text-muted-foreground mb-4">{error}</p>
+          <Button variant="outline" size="sm" onClick={() => fetchCourses()}>
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
+  
+  if (courses.length === 0) {
+    return (
+      <div>
+        <h2 className="text-xl font-semibold mb-4">My Courses</h2>
+        <div className="bg-muted p-6 rounded-lg flex flex-col items-center justify-center">
+          <p className="text-lg font-medium mb-2">No courses found</p>
+          <p className="text-sm text-muted-foreground mb-4">You haven&apos;t enrolled in any courses yet</p>
+          <Button onClick={() => router.push('/courses/browse')}>
+            Browse Courses
+          </Button>
+        </div>
+      </div>
+    );
+  }
+  
   return (
     <motion.div
       variants={containerVariants}
       initial="hidden"
       animate="show"
     >
-      <h2 className="text-xl font-semibold mb-4">My Courses</h2>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold">My Courses</h2>
+        {courses.length > 3 && (
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={() => setShowAll(!showAll)}
+          >
+            {showAll ? 'Show Less' : 'View All'}
+          </Button>
+        )}
+      </div>
+      
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {courses.map((course) => (
-          <motion.div key={course.id} variants={itemVariants}>
-            <Card className="h-full flex flex-col">
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <CardTitle>{course.title}</CardTitle>
-                  <Badge variant={course.badgeVariant}>{course.badgeText}</Badge>
-                </div>
-                <CardDescription>{course.description}</CardDescription>
-              </CardHeader>
-              <CardContent className="flex-1">
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span>Progress</span>
-                      <span>{course.progress}%</span>
-                    </div>
-                    <Progress value={course.progress} className="h-2" />
-                  </div>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Clock className="h-4 w-4" />
-                      <span>{course.timeSpent}</span>
-                    </div>
-                    <span>Last studied: {course.lastStudied}</span>
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button variant="default" className="w-full">Continue</Button>
-              </CardFooter>
-            </Card>
-          </motion.div>
+        {filteredCourses.map((course) => (
+          <CourseCard 
+            key={course.id} 
+            course={course}
+            onContinue={handleContinue}
+          />
         ))}
       </div>
     </motion.div>

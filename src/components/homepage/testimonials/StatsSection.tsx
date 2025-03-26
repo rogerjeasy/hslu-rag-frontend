@@ -1,6 +1,8 @@
 'use client'
 
 import { motion } from 'framer-motion'
+import { useStatisticsStore } from '@/store/statisticsStore'
+import { useEffect, useState } from 'react'
 
 interface StatItemProps {
   label: string
@@ -28,11 +30,27 @@ interface StatsSectionProps {
 }
 
 export function StatsSection({ isInView }: StatsSectionProps) {
+
+  const [isMounted, setIsMounted] = useState(false)
+  const { 
+    publicStats, 
+    fetchPublicStatistics, 
+  } = useStatisticsStore()
+  
+  useEffect(() => {
+    setIsMounted(true)
+    
+    // Fetch public statistics
+    fetchPublicStatistics()
+  
+    
+  }, [fetchPublicStatistics])
+
   const stats = [
-    { label: 'Active Students', value: '500+' },
+    { label: 'Active Students', value: publicStats?.totalUsers ? `${publicStats.totalUsers.toLocaleString()}+` : '500+', },
     { label: 'Exam Success Rate', value: '94%' },
     { label: 'Average Rating', value: '4.8/5' },
-    { label: 'Questions Answered', value: '15,000+' }
+    { label: 'Questions Answered', value: '150+' }
   ];
 
   return (
@@ -42,7 +60,7 @@ export function StatsSection({ isInView }: StatsSectionProps) {
       transition={{ duration: 0.8, delay: 0.5 }}
       className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-8 text-center"
     >
-      {stats.map((stat, index) => (
+      {isMounted && stats.map((stat, index) => (
         <StatItem 
           key={index}
           label={stat.label}
