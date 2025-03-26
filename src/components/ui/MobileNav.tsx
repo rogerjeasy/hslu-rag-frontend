@@ -21,14 +21,16 @@ import {
   X,
   LucideLayoutDashboard,
   LucideHome,
-  LucideHelpCircle,
   LucideSchool,
   Sparkles,
   Brain,
   BookOpen,
   BarChart3,
   MessagesSquare,
-  Users
+  Users,
+  Info,
+  BookMarked,
+  CheckSquare
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -57,38 +59,38 @@ interface Route {
 const features: Feature[] = [
   {
     title: "AI Study Assistant",
-    href: "/chat",
+    href: "/features/ai-chat-assistant",
     description: "Get instant, accurate answers to your questions based on official HSLU course materials.",
     icon: <MessagesSquare className="h-5 w-5" />,
     highlight: true,
   },
   {
     title: "Study Guide Generator",
-    href: "/study-guides",
+    href: "/features/study-guides",
     description: "Create personalized exam preparation summaries and structured study plans.",
     icon: <BookOpen className="h-5 w-5" />,
   },
   {
     title: "Practice Assessment",
-    href: "/practice-questions",
+    href: "/features/practice-questions",
     description: "Test your knowledge with course-specific practice questions and detailed explanations.",
     icon: <LucideSchool className="h-5 w-5" />,
   },
   {
     title: "Knowledge Analytics",
-    href: "/knowledge-gap",
+    href: "/features/knowledge-gaps",
     description: "Identify your knowledge gaps with AI-powered learning analytics and targeted recommendations.",
     icon: <BarChart3 className="h-5 w-5" />,
   },
   {
     title: "Concept Explorer",
-    href: "/materials",
+    href: "/features/materials",
     description: "Master complex data science concepts through interactive explanations and practical examples.",
     icon: <Brain className="h-5 w-5" />,
   },
   {
     title: "Collaborative Learning",
-    href: "/groups",
+    href: "/features/groups",
     description: "Form study groups, share resources, and learn collaboratively with your classmates.",
     icon: <Users className="h-5 w-5" />,
   },
@@ -99,23 +101,18 @@ export function MobileNav() {
   const [featuresExpanded, setFeaturesExpanded] = useState(false)
   const pathname = usePathname()
   
-  // Get user state from Zustand store
   const user = useUserStore(state => state.user)
   const isAuthenticated = useUserStore(state => state.isAuthenticated)
   
-  // Use the useLogout hook instead of directly accessing logout
   const handleLogout = useLogout()
   
-  // Check if user has admin role
   const isAdmin = user?.role?.includes("admin") || false
   
-  // Function to handle logout and close mobile menu
   const onLogout = async () => {
     await handleLogout()
-    setOpen(false) // Close the mobile menu after logout
+    setOpen(false) 
   }
   
-  // Get user initials for avatar fallback
   const getUserInitials = () => {
     if (!user) return "US"
     const firstInitial = user.firstName ? user.firstName.charAt(0).toUpperCase() : ""
@@ -123,59 +120,89 @@ export function MobileNav() {
     return firstInitial + lastInitial || "US"
   }
   
-  // Routes accessible to all users (public)
+  // Routes for authenticated users
+  const authenticatedRoutes: Route[] = [
+    {
+      href: "/dashboard",
+      label: "Dashboard",
+      icon: <LucideLayoutDashboard className="h-5 w-5 text-primary" />,
+      active: pathname === "/dashboard",
+    },
+    {
+      href: "/courses",
+      label: "Courses",
+      icon: <BookOpen className="h-5 w-5 text-primary" />,
+      active: pathname.startsWith("/courses"),
+    },
+    {
+      href: "/chat",
+      label: "Chat Assistant",
+      icon: <MessagesSquare className="h-5 w-5 text-primary" />,
+      active: pathname === "/chat",
+    },
+    {
+      href: "/study-guides",
+      label: "Study Guides",
+      icon: <BookMarked className="h-5 w-5 text-primary" />,
+      active: pathname === "/study-guides",
+    },
+    {
+      href: "/practice-questions",
+      label: "Practice Questions",
+      icon: <CheckSquare className="h-5 w-5 text-primary" />,
+      active: pathname === "/practice-questions",
+    },
+    {
+      href: "/knowledge-gaps",
+      label: "Knowledge Gap Analytics",
+      icon: <BarChart3 className="h-5 w-5 text-primary" />,
+      active: pathname === "/knowledge-gaps",
+    },
+  ]
+  
+  // Routes for non-authenticated users
   const publicRoutes: Route[] = [
     {
       href: "/",
       label: "Home",
-      icon: <LucideHome className="h-5 w-5" />,
+      icon: <LucideHome className="h-5 w-5 text-primary" />,
       active: pathname === "/",
     },
     {
-      href: "/features",
+      href: "/learning-hub",
       label: "AI Learning Hub",
-      icon: <Sparkles className="h-5 w-5" />,
-      active: pathname === "/features",
+      icon: <Sparkles className="h-5 w-5 text-primary" />,
+      active: pathname === "/learning-hub",
       hasSubmenu: true,
       onClick: () => setFeaturesExpanded(!featuresExpanded)
     },
     {
       href: "/about-us",
       label: "About Us",
-      icon: <LucideHelpCircle className="h-5 w-5" />,
+      icon: <Info className="h-5 w-5 text-primary" />,
       active: pathname === "/about-us",
-    },
-  ]
-  
-  // Routes accessible only to authenticated users
-  const authenticatedRoutes: Route[] = [
-    {
-      href: "/dashboard",
-      label: "Dashboard",
-      icon: <LucideLayoutDashboard className="h-5 w-5" />,
-      active: pathname === "/dashboard",
     },
   ]
   
   // Admin-only routes
   const adminRoutes: Route[] = isAdmin ? [
     {
-      href: "/application-management",
-      label: "Application Management",
-      icon: <Settings className="h-5 w-5" />,
-      active: pathname === "/application-management",
+      href: "/application-management/dashboard",
+      label: "Admin Dashboard",
+      icon: <Settings className="h-5 w-5 text-primary" />,
+      active: pathname === "/admin",
     }
   ] : []
   
   // Active routes based on authentication status and admin role
   const routes: Route[] = isAuthenticated 
-    ? [...publicRoutes, ...authenticatedRoutes, ...adminRoutes]
+    ? [...authenticatedRoutes, ...adminRoutes]
     : publicRoutes
  
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" className="md:hidden relative h-9 w-9 rounded-full">
+        <Button variant="ghost" size="icon" className="md:hidden text-orange-500 relative h-9 w-9 rounded-full">
           <Menu className="h-5 w-5" />
           <span className="sr-only">Toggle menu</span>
         </Button>
@@ -229,7 +256,7 @@ export function MobileNav() {
                 onClick={() => setOpen(false)}
                 className="w-full"
               >
-                <Button variant="outline" className="w-full">Login</Button>
+                <Button variant="outline" className="w-full bg-green-500 text-white hover:bg-green-600">Login</Button>
               </Link>
               <Link 
                 href="/register" 
