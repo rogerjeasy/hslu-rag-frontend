@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
+import { useStatisticsStore } from '@/store/statisticsStore'
 
-// Sub-components
 import { HeroTitle } from './hero/HeroTitle'
 import { HeroBadge } from './hero/HeroBadge'
 import { HeroDescription } from './hero/HeroDescription'
@@ -15,7 +15,6 @@ import { StatCounter } from './hero/StatCounter'
 import { AnimatedDots } from './hero/AnimatedDots'
 import { AnimatedWave } from './hero/AnimatedWave'
 
-// Icons
 import {
   Brain, 
   Users, 
@@ -30,9 +29,17 @@ export function HeroSection() {
   const [isMounted, setIsMounted] = useState(false)
   const [activeFeature, setActiveFeature] = useState(0)
   const router = useRouter()
+
+  const { 
+    publicStats, 
+    fetchPublicStatistics, 
+  } = useStatisticsStore()
   
   useEffect(() => {
     setIsMounted(true)
+    
+    // Fetch public statistics
+    fetchPublicStatistics()
     
     // Cycle through features automatically
     const interval = setInterval(() => {
@@ -40,7 +47,7 @@ export function HeroSection() {
     }, 5000)
     
     return () => clearInterval(interval)
-  }, [])
+  }, [fetchPublicStatistics])
 
   // App features with animations
   const features = [
@@ -86,7 +93,7 @@ export function HeroSection() {
     { 
       icon: <Brain className="w-5 h-5 text-blue-500" />,
       label: 'Courses Supported', 
-      value: '12+',
+      value: publicStats?.totalCourses ? `${publicStats.totalCourses}+` : '12+',
       delay: 0.6,
       increment: 1,
       duration: 3
@@ -102,7 +109,7 @@ export function HeroSection() {
     { 
       icon: <Users className="w-5 h-5 text-blue-500" />,
       label: 'Active Students', 
-      value: '500+',
+      value: publicStats?.totalUsers ? `${publicStats.totalUsers.toLocaleString()}+` : '500+',
       delay: 0.8,
       increment: 25,
       duration: 3

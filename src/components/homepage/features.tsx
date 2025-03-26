@@ -11,6 +11,7 @@ import {
   BookMarked,
   LineChart
 } from 'lucide-react'
+import Link from 'next/link'
 
 interface FeatureCardProps {
   icon: React.ReactNode
@@ -18,6 +19,7 @@ interface FeatureCardProps {
   description: string
   delay?: number
   accentColor?: string
+  href?: string
 }
 
 const FeatureCard = ({ 
@@ -25,11 +27,11 @@ const FeatureCard = ({
   title, 
   description, 
   delay = 0,
-  accentColor = 'blue'
+  accentColor = 'blue',
+  href
 }: FeatureCardProps) => {
   const ref = useRef(null)
   const isInView = useInView(ref, { once: true, margin: "-100px 0px" })
-  // const controls = useAnimationControls()
   const [isHovered, setIsHovered] = useState(false)
   
   const gradientMap = {
@@ -126,6 +128,41 @@ const FeatureCard = ({
     }
   }
 
+  // Render learn more content
+  const renderLearnMore = () => {
+    if (!href) return null;
+
+    return (
+      <motion.div
+        className="mt-4 pt-2 border-t border-dashed border-gray-200"
+        initial={{ opacity: 0, height: 0 }}
+        animate={{
+          opacity: isHovered ? 1 : 0,
+          height: isHovered ? 'auto' : 0
+        }}
+        transition={{ duration: 0.3 }}
+      >
+        <Link href={href} passHref>
+          <motion.span 
+            className={`text-xs font-medium ${textColor} flex items-center gap-1 cursor-pointer hover:underline`}
+            initial={{ x: -10, opacity: 0 }}
+            animate={{ 
+              x: isHovered ? 0 : -10,
+              opacity: isHovered ? 1 : 0
+            }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+          >
+            Learn more
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 12h14"></path>
+              <path d="M12 5l7 7-7 7"></path>
+            </svg>
+          </motion.span>
+        </Link>
+      </motion.div>
+    )
+  }
+
   return (
     <motion.div
       ref={ref}
@@ -178,36 +215,13 @@ const FeatureCard = ({
           </motion.p>
         </div>
         
-        {/* Animated indicator that appears on hover */}
-        <motion.div
-          className="mt-4 pt-2 border-t border-dashed border-gray-200"
-          initial={{ opacity: 0, height: 0 }}
-          animate={{
-            opacity: isHovered ? 1 : 0,
-            height: isHovered ? 'auto' : 0
-          }}
-          transition={{ duration: 0.3 }}
-        >
-          <motion.span 
-            className={`text-xs font-medium ${textColor} flex items-center gap-1`}
-            initial={{ x: -10, opacity: 0 }}
-            animate={{ 
-              x: isHovered ? 0 : -10,
-              opacity: isHovered ? 1 : 0
-            }}
-            transition={{ duration: 0.3, delay: 0.1 }}
-          >
-            Learn more
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 12h14"></path>
-              <path d="M12 5l7 7-7 7"></path>
-            </svg>
-          </motion.span>
-        </motion.div>
+        {/* Clickable Learn more section */}
+        {renderLearnMore()}
       </div>
     </motion.div>
   )
 }
+
 
 export function Features() {
   const [isMounted, setIsMounted] = useState(false)
@@ -221,37 +235,36 @@ export function Features() {
   const features = [
     {
       icon: <MessageSquare />,
-      title: "Course-Specific Q&A",
+      title: "AI Study Assistant",
       description: "Get instant, accurate answers to your questions based on your specific HSLU course materials and textbooks.",
-      accentColor: "blue"
+      accentColor: "blue",
+      href: "features/ai-chat-assistant"
     },
     {
       icon: <BookMarked />,
-      title: "Exam Preparation",
+      title: "Study Guide Generator",
       description: "Generate comprehensive study guides and concise summaries organized by importance and relevance to exams.",
-      accentColor: "indigo"
+      accentColor: "indigo",
+      href: "features/study-guides"
     },
     {
       icon: <GraduationCap />,
       title: "Practice Questions",
       description: "Test your knowledge with course-specific practice questions that reference specific lectures and concepts.",
-      accentColor: "purple"
+      accentColor: "purple",
+      href: "features/practice-questions"
     },
-    {
-      icon: <Lightbulb />,
-      title: "Concept Clarification",
-      description: "Understand complex data science concepts with detailed explanations and practical examples from your labs.",
-      accentColor: "cyan"
-    }
-  ]
-
-  const extraFeatures = [
     {
       icon: <Zap />,
       title: "Knowledge Gap Identification",
       description: "Identify areas where you need additional focus and get recommended materials to review before exams.",
-      accentColor: "blue"
-    },
+      accentColor: "blue",
+      href: "features/knowledge-gaps"
+    }
+  ]
+
+  const extraFeatures = [
+    
     {
       icon: <LineChart />,
       title: "Progress Tracking",
@@ -263,6 +276,12 @@ export function Features() {
       title: "Study Guides",
       description: "Generate customized study materials that align perfectly with your course syllabus and learning objectives.",
       accentColor: "purple"
+    },
+    {
+      icon: <Lightbulb />,
+      title: "Concept Clarification",
+      description: "Understand complex data science concepts with detailed explanations and practical examples from your labs.",
+      accentColor: "cyan"
     }
   ]
   
@@ -418,8 +437,8 @@ export function Features() {
           animate={isInView ? "visible" : "hidden"}
         >
           <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-            Powerful Features for<br className="sm:hidden" />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600"> Better Learning</span>
+            Powerful Features <br className="sm:hidden" />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">for Better Learning</span>
           </h2>
           <p className="mt-4 text-lg text-gray-600">
             Our intelligent study assistant provides everything you need to succeed in your 
@@ -437,6 +456,7 @@ export function Features() {
               description={feature.description}
               delay={0.1 * index}
               accentColor={feature.accentColor}
+              href={feature.href}
             />
           ))}
         </div>
@@ -461,6 +481,7 @@ export function Features() {
                 description={feature.description}
                 delay={0.6 + (0.1 * index)}
                 accentColor={feature.accentColor}
+                // href={feature.href}
               />
             ))}
           </div>
