@@ -34,16 +34,11 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen flex flex-col">
+      <body>
         <ToastProvider>
           <AuthInitializer>
             <Header />
-            <main className="flex-grow w-full bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-              {/* Professional background wrapper for all pages */}
-              <div className="max-w-screen-2xl mx-auto w-full h-full px-4 sm:px-6 lg:px-8 py-6">
-                {children}
-              </div>
-            </main>
+              {children}
             <Footer />
           </AuthInitializer>
         </ToastProvider>
