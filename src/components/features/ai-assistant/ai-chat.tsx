@@ -227,7 +227,7 @@ export function AIChat() {
               </Button>
               <Separator orientation="vertical" className="h-6 mx-2" />
               <div className="text-xs text-muted-foreground">
-                Powered by Claude AI
+                Powered by ChatGPT AI
               </div>
               <div className="flex ml-auto">
                 <Button variant="ghost" size="icon" className="rounded-full h-8 w-8">

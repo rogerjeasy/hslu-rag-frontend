@@ -15,8 +15,11 @@ import {
 } from "lucide-react";
 import { AIChat } from "../features/ai-assistant/ai-chat";
 import { FeatureHighlight } from "./feature-highlight";
+import { useRouter } from "next/navigation";
 
 export default function AIChatAssistantPage() {
+
+  const router = useRouter();
   return (
     <div className="container py-12 space-y-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       {/* Hero section */}
@@ -38,11 +41,11 @@ export default function AIChatAssistantPage() {
           </p>
           
           <div className="flex flex-wrap justify-center gap-4">
-            <Button size="lg" className="bg-blue-600 hover:bg-blue-700">
+            <Button onClick={()=> router.push("/login")} size="lg" className="bg-blue-600 hover:bg-blue-700">
               <MessageSquare className="mr-2 h-4 w-4" />
               Try AI Chat Now
             </Button>
-            <Button size="lg" variant="outline">
+            <Button onClick={()=> router.push("/ai-assistant/documentation")} size="lg" variant="outline">
               <FileSearch className="mr-2 h-4 w-4" />
               View Documentation
             </Button>
