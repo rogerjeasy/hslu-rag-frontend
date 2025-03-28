@@ -1,7 +1,6 @@
-// src/components/chat/ChatContainer.tsx
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useConversationStore } from '@/store/conversationStore';
 import { Button } from '@/components/ui/button';
@@ -47,8 +46,18 @@ const ChatContainer: React.FC = () => {
   const [queryType, setQueryType] = useState<QueryType>(QueryType.QUESTION_ANSWERING);
   const [additionalParams, setAdditionalParams] = useState<AdditionalParams>({});
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [isDesktop, setIsDesktop] = useState(true); // Default to true
+  const [isDesktop, setIsDesktop] = useState(true);
   const [showScrollButton, setShowScrollButton] = useState(false);
+  
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+  
+  // Refs
+  const messageEndRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const lastMessageCountRef = useRef<number>(0);
+  const userScrolledRef = useRef<boolean>(false);
+  const isAutoScrollingRef = useRef<boolean>(false);
+  const currentRouteRef = useRef<string | null>(null);
 
   // Conversation store
   const { 
@@ -56,14 +65,10 @@ const ChatContainer: React.FC = () => {
     getConversation,
     createConversation,
     sendMessage,
-    setCurrentConversation
+    clearCurrentConversation
   } = useConversationStore();
 
-  // References
-  const messageEndRef = useRef<HTMLDivElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  // Setup media query on client side only
+  // Setup media query
   useEffect(() => {
     const mediaQuery = window.matchMedia("(min-width: 768px)");
     setIsDesktop(mediaQuery.matches);
@@ -71,9 +76,22 @@ const ChatContainer: React.FC = () => {
     const handleResize = () => setIsDesktop(mediaQuery.matches);
     mediaQuery.addEventListener("change", handleResize);
     
-    // Clean up listener on component unmount
     return () => mediaQuery.removeEventListener("change", handleResize);
   }, []);
+
+  // Track route changes to detect new chat navigation
+  useEffect(() => {
+    const currentRoute = params?.id ? `/chat/${params.id}` : '/chat';
+    
+    if (currentRouteRef.current?.startsWith('/chat/') && currentRoute === '/chat') {
+      // Make sure to reset conversation state completely
+      clearCurrentConversation();
+      lastMessageCountRef.current = 0;
+    }
+    
+    // Update current route reference
+    currentRouteRef.current = currentRoute;
+  }, [params, clearCurrentConversation]);
 
   // Handle conversation ID from URL
   useEffect(() => {
@@ -81,11 +99,22 @@ const ChatContainer: React.FC = () => {
     
     const conversationId = params?.id as string; 
     
+    // If we're on the base /chat route, ensure conversation is cleared
+    if (!conversationId) {
+      clearCurrentConversation();
+      lastMessageCountRef.current = 0;
+      return;
+    }
+    
+    // Only fetch if we don't already have this conversation loaded
     if (conversationId && (!currentConversation || currentConversation.id !== conversationId)) {
       const fetchConversation = async () => {
         try {
           setIsLoading(true);
           await getConversation(conversationId);
+          // Reset auto-scroll state for new conversation
+          setShouldAutoScroll(true);
+          userScrolledRef.current = false;
         } catch (error) {
           toast({
             title: "Error",
@@ -100,31 +129,75 @@ const ChatContainer: React.FC = () => {
       
       fetchConversation();
     }
-  }, [params, currentConversation, getConversation, toast]);
+  }, [params, currentConversation, getConversation, clearCurrentConversation, toast]);
 
-  // Auto-scroll to bottom when messages change
+  // Smart auto-scroll handler for new messages
   useEffect(() => {
-    if (messageEndRef.current) {
-      messageEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (!currentConversation?.messages) return;
+    
+    const currentMessageCount = currentConversation.messages.length;
+    
+    // Check if new messages were added
+    if (currentMessageCount > lastMessageCountRef.current) {
+      if (shouldAutoScroll && !userScrolledRef.current) {
+        isAutoScrollingRef.current = true;
+        
+        requestAnimationFrame(() => {
+          // Use a small timeout to ensure DOM is updated before scrolling
+          setTimeout(() => {
+            if (messageEndRef.current) {
+              messageEndRef.current.scrollIntoView({ behavior: 'smooth' });
+              setShowScrollButton(false);
+              
+              // After animation completes, reset the auto-scrolling flag
+              setTimeout(() => {
+                isAutoScrollingRef.current = false;
+              }, 300); // Approximate scroll animation duration
+            }
+          }, 50);
+        });
+      } else {
+        // If we're not auto-scrolling, show the scroll button
+        setShowScrollButton(true);
+      }
     }
-  }, [currentConversation?.messages]);
+    
+    lastMessageCountRef.current = currentMessageCount;
+  }, [currentConversation?.messages, shouldAutoScroll]);
 
-  // Set scroll shadow effect on list scroll and show/hide scroll button
+  // Handle scroll events
   useEffect(() => {
     const handleScroll = () => {
+      // Skip handling if the current scroll is from auto-scrolling
+      if (isAutoScrollingRef.current) return;
+      
       if (containerRef.current) {
         const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
+        
+        // Add shadow when scrolled down
         setIsScrolled(scrollTop > 10);
         
-        // Show scroll button if we've scrolled up significantly
         const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
-        setShowScrollButton(distanceFromBottom > 300);
+        
+        // If user scrolls up more than 300px, show the button and mark as user-scrolled
+        if (distanceFromBottom > 300) {
+          setShowScrollButton(true);
+          userScrolledRef.current = true;
+          setShouldAutoScroll(false);
+        } 
+        
+        // If user manually scrolls to bottom (within 20px), reset scroll state
+        if (distanceFromBottom < 20) {
+          setShowScrollButton(false);
+          userScrolledRef.current = false;
+          setShouldAutoScroll(true);
+        }
       }
     };
 
     const currentContainer = containerRef.current;
     if (currentContainer) {
-      currentContainer.addEventListener('scroll', handleScroll);
+      currentContainer.addEventListener('scroll', handleScroll, { passive: true });
       return () => currentContainer.removeEventListener('scroll', handleScroll);
     }
   }, []);
@@ -132,6 +205,10 @@ const ChatContainer: React.FC = () => {
   // Handlers
   const handleSendMessage = async (content: string, attachments?: File[]) => {
     if (!content.trim() && (!attachments || attachments.length === 0)) return;
+    
+    // When user sends a message, always enable auto-scroll
+    setShouldAutoScroll(true);
+    userScrolledRef.current = false;
     
     if (!currentConversation) {
       try {
@@ -143,6 +220,8 @@ const ChatContainer: React.FC = () => {
         });
         
         if (newConversation.id) {
+          // Update the message count ref with the initial message
+          lastMessageCountRef.current = 1; // Initial message
           router.push(`/chat/${newConversation.id}`);
         }
       } catch (error) {
@@ -179,7 +258,13 @@ const ChatContainer: React.FC = () => {
   };
 
   const handleNewChat = () => {
-    setCurrentConversation(null);
+    clearCurrentConversation(); 
+    
+    lastMessageCountRef.current = 0;
+    setShowScrollButton(false);
+    setShouldAutoScroll(true);
+    userScrolledRef.current = false;
+    
     router.push('/chat');
   };
 
@@ -187,10 +272,21 @@ const ChatContainer: React.FC = () => {
     setIsSettingsOpen(!isSettingsOpen);
   };
 
-  const scrollToBottom = () => {
-    messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    setShowScrollButton(false);
-  };
+  // Scroll to bottom manually (when button is clicked)
+  const scrollToBottom = useCallback(() => {
+    if (messageEndRef.current) {
+      isAutoScrollingRef.current = true;
+      messageEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      setShowScrollButton(false);
+      userScrolledRef.current = false;
+      setShouldAutoScroll(true);
+      
+      // Reset auto-scrolling flag after animation completes
+      setTimeout(() => {
+        isAutoScrollingRef.current = false;
+      }, 300);
+    }
+  }, []);
 
   // Get query type icon
   const getQueryTypeIcon = (type: QueryType) => {
@@ -209,7 +305,7 @@ const ChatContainer: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen w-full bg-slate-50 dark:bg-slate-900 overflow-hidden">
+    <div className="flex h-full w-full bg-slate-50 dark:bg-slate-900">
       {/* Desktop Sidebar */}
       {isDesktop && (
         <div className="w-80 border-r border-slate-200 dark:border-slate-800 h-full hidden md:flex flex-col">
@@ -238,48 +334,52 @@ const ChatContainer: React.FC = () => {
         </Sheet>
       )}
       
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col h-full relative">
-        <ChatHeader 
-          conversation={currentConversation}
-          onNewChat={handleNewChat}
-          onSettings={handleSettingsToggle}
-          onToggleSidebar={() => setIsMobileSidebarOpen(true)}
-          selectedModel={selectedModel}
-          onSelectModel={setSelectedModel}
-        />
+      {/* Main Chat Area with fixed layout */}
+      <div className="flex-1 flex flex-col h-full">
+        {/* Fixed Header */}
+        <div className="flex-shrink-0">
+          <ChatHeader 
+            conversation={currentConversation}
+            onNewChat={handleNewChat}
+            onSettings={handleSettingsToggle}
+            onToggleSidebar={() => setIsMobileSidebarOpen(true)}
+            selectedModel={selectedModel}
+            onSelectModel={setSelectedModel}
+          />
 
-        {/* Query type badge - shown when in conversation */}
-        {currentConversation && queryType && (
-          <div className="absolute top-16 right-4 z-10">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Badge variant="outline" className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm py-1 px-2 flex items-center gap-1 shadow-sm">
-                    {getQueryTypeIcon(queryType)}
-                    <span className="hidden sm:inline">
-                      {queryType === QueryType.QUESTION_ANSWERING ? "Q&A" : 
-                       queryType === QueryType.STUDY_GUIDE ? "Study Guide" :
-                       queryType === QueryType.PRACTICE_QUESTIONS ? "Practice" : 
-                       "Knowledge Gap"}
-                    </span>
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {queryType === QueryType.QUESTION_ANSWERING ? "Question Answering Mode" : 
-                   queryType === QueryType.STUDY_GUIDE ? "Study Guide Generation Mode" :
-                   queryType === QueryType.PRACTICE_QUESTIONS ? "Practice Questions Mode" : 
-                   "Knowledge Gap Analysis Mode"}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-        )}
+          {/* Query type badge */}
+          {currentConversation && queryType && (
+            <div className="absolute top-16 right-4 z-20">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="outline" className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm py-1 px-2 flex items-center gap-1 shadow-sm">
+                      {getQueryTypeIcon(queryType)}
+                      <span className="hidden sm:inline">
+                        {queryType === QueryType.QUESTION_ANSWERING ? "Q&A" : 
+                         queryType === QueryType.STUDY_GUIDE ? "Study Guide" :
+                         queryType === QueryType.PRACTICE_QUESTIONS ? "Practice" : 
+                         "Knowledge Gap"}
+                      </span>
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {queryType === QueryType.QUESTION_ANSWERING ? "Question Answering Mode" : 
+                     queryType === QueryType.STUDY_GUIDE ? "Study Guide Generation Mode" :
+                     queryType === QueryType.PRACTICE_QUESTIONS ? "Practice Questions Mode" : 
+                     "Knowledge Gap Analysis Mode"}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          )}
+        </div>
 
+        {/* Scrollable Message Area - ONLY THIS PART SCROLLS */}
         <div 
           ref={containerRef}
           className={cn(
-            "flex-1 overflow-y-auto px-4 py-2 sm:px-6 relative",
+            "flex-1 min-h-0 overflow-y-auto px-4 py-2 sm:px-6 relative",
             isScrolled ? "shadow-[inset_0_8px_8px_-8px_rgba(0,0,0,0.1)] dark:shadow-[inset_0_8px_8px_-8px_rgba(0,0,0,0.3)]" : ""
           )}
         >
@@ -327,14 +427,14 @@ const ChatContainer: React.FC = () => {
                 isLoading={isLoading}
               />
             
-              {/* Scroll to bottom button */}
+              {/* Scroll to bottom button - only shows when needed */}
               <AnimatePresence>
                 {showScrollButton && (
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 10 }}
-                    className="sticky bottom-4 w-full flex justify-center"
+                    className="sticky bottom-20 w-full flex justify-center" 
                   >
                     <Button
                       onClick={scrollToBottom}
@@ -347,12 +447,15 @@ const ChatContainer: React.FC = () => {
                   </motion.div>
                 )}
               </AnimatePresence>
-              <div ref={messageEndRef} />
+              
+              {/* Invisible element for scroll anchoring */}
+              <div ref={messageEndRef} className="h-0 w-full" />
             </ChatMainLayout>
           )}
         </div>
         
-        <div className="border-t border-slate-200 dark:border-slate-800 p-3 sm:p-4 backdrop-blur-sm bg-white/70 dark:bg-slate-900/70">
+        {/* Fixed Input Area - STAYS AT BOTTOM, NEVER SCROLLS */}
+        <div className="flex-shrink-0 border-t border-slate-200 dark:border-slate-800 p-3 sm:p-4 bg-white dark:bg-slate-900 w-full z-10 shadow-md">
           <ChatMainLayout maxWidth="2xl">
             <ChatInput 
               onSendMessage={handleSendMessage} 

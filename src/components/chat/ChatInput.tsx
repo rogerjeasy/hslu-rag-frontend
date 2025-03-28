@@ -62,12 +62,30 @@ const ChatInput: React.FC<ChatInputProps> = ({
     textarea.style.height = `${newHeight}px`;
   }, [message]);
 
+  // Anti-scroll submit handler
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if ((!message.trim() && attachments.length === 0) || isLoading || disabled) return;
+    
+    // Save the current scroll position before submitting
+    const scrollContainer = document.querySelector('.overflow-y-auto');
+    const scrollPosition = scrollContainer?.scrollTop;
+    
     onSendMessage(message, attachments.length > 0 ? attachments : undefined);
     setMessage('');
     setAttachments([]);
+    
+    // Ensure focus stays on textarea but prevent scrolling to it
+    requestAnimationFrame(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus({ preventScroll: true });
+      }
+      
+      // Restore scroll position if needed (helps prevent jumps on mobile)
+      if (scrollContainer && scrollPosition !== undefined) {
+        scrollContainer.scrollTop = scrollPosition;
+      }
+    });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -93,6 +111,13 @@ const ChatInput: React.FC<ChatInputProps> = ({
     
     // Reset the input
     e.target.value = '';
+    
+    // Focus back on textarea without scrolling
+    requestAnimationFrame(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus({ preventScroll: true });
+      }
+    });
   };
 
   const removeAttachment = (index: number) => {
@@ -202,6 +227,8 @@ const ChatInput: React.FC<ChatInputProps> = ({
             "text-sm sm:text-base"
           )}
           disabled={disabled || isLoading}
+          // Prevent scrolling when focused
+          onFocus={(e) => e.target.focus({ preventScroll: true })}
         />
 
         {/* Attachment button */}
