@@ -88,3 +88,70 @@ export function validateFile(file: File, acceptedTypes: string[]): boolean {
     return extension === type.replace('.', '')
   })
 }
+
+
+// /**
+//  * Format file size to human readable format
+//  */
+// export function formatFileSize(bytes: number): string {
+//   if (bytes === 0) return "0 B";
+  
+//   const sizes = ["B", "KB", "MB", "GB", "TB"];
+//   const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  
+//   return parseFloat((bytes / Math.pow(1024, i)).toFixed(2)) + " " + sizes[i];
+// }
+
+/**
+ * Format date to human readable format (e.g., "Jan 15, 2023")
+ */
+export function formatDate(dateString: string): string {
+  const date = new Date(dateString);
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+/**
+ * Format date and time to human readable format (e.g., "Jan 15, 2023, 3:25 PM")
+ */
+export function formatDateTime(dateString: string): string {
+  const date = new Date(dateString);
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+/**
+ * Calculate how long ago a date was (e.g., "2 hours ago", "3 days ago")
+ */
+export function timeAgo(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  
+  if (diffSec < 60) return `${diffSec} seconds ago`;
+  
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin} minute${diffMin === 1 ? "" : "s"} ago`;
+  
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return `${diffHour} hour${diffHour === 1 ? "" : "s"} ago`;
+  
+  const diffDay = Math.floor(diffHour / 24);
+  if (diffDay < 30) return `${diffDay} day${diffDay === 1 ? "" : "s"} ago`;
+  
+  const diffMonth = Math.floor(diffDay / 30);
+  if (diffMonth < 12) return `${diffMonth} month${diffMonth === 1 ? "" : "s"} ago`;
+  
+  const diffYear = Math.floor(diffMonth / 12);
+  return `${diffYear} year${diffYear === 1 ? "" : "s"} ago`;
+}

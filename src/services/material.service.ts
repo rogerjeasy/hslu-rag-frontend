@@ -1,6 +1,26 @@
-// src/services/material.service.ts
+// src/services/material.service.ts - Fixed TypeScript any types
 import { api, handleError } from '@/helpers/api';
-import { Material, MaterialProcessingStatus, MaterialUploadRequest, BatchProcessingStatus } from '@/types/material.types';
+import { Material, MaterialProcessingStatus, MaterialUploadRequest, MaterialUpdate, BatchProcessingStatus } from '@/types/material.types';
+
+// Define an interface for the backend API data format
+interface BackendMaterialData {
+  id: string;
+  title?: string;
+  description?: string;
+  type?: string;
+  material_type?: string;
+  course_id?: string;
+  module_id?: string;
+  topic_id?: string;
+  file_url?: string;
+  file_size?: number;
+  file_type?: string;
+  status?: string;
+  uploaded_at?: string;
+  updated_at?: string;
+  chunk_count?: number;
+  vector_ids?: string[];
+}
 
 class MaterialService {
   /**
@@ -22,6 +42,9 @@ class MaterialService {
       if (data.title) formData.append('title', data.title);
       if (data.description) formData.append('description', data.description);
       if (data.type) formData.append('material_type', data.type);
+      if (data.fileType) formData.append('file_type', data.fileType);
+
+      console.log('formData', formData);
       
       const response = await api.post('/materials/upload', formData, {
         headers: {
@@ -35,6 +58,55 @@ class MaterialService {
       throw new Error(`Failed to upload material: ${errorMessage}`);
     }
   }
+
+  /**
+   * Update an existing material
+   */
+  async updateMaterial(
+    materialId: string,
+    data: MaterialUpdate
+  ): Promise<Material> {
+    try {
+      // Convert camelCase to snake_case for backend
+      const apiData: Record<string, string> = {};
+      if (data.title !== undefined) apiData.title = data.title;
+      if (data.description !== undefined) apiData.description = data.description;
+      if (data.type !== undefined) apiData.type = data.type;
+      if (data.courseId !== undefined) apiData.course_id = data.courseId;
+      if (data.moduleId !== undefined) apiData.module_id = data.moduleId;
+      if (data.topicId !== undefined) apiData.topic_id = data.topicId;
+      
+      const response = await api.patch(`/materials/${materialId}`, apiData);
+      return this.convertToMaterial(response.data);
+    } catch (error) {
+      const errorMessage = handleError(error);
+      throw new Error(`Failed to update material: ${errorMessage}`);
+    }
+  }
+
+  /**
+   * Helper to convert API response to Material type
+   */
+  private convertToMaterial(data: BackendMaterialData): Material {
+    return {
+      id: data.id,
+      title: data.title || '',
+      description: data.description,
+      type: data.type || data.material_type || '',
+      courseId: data.course_id || '',
+      moduleId: data.module_id,
+      topicId: data.topic_id,
+      fileUrl: data.file_url || '',
+      fileSize: data.file_size || 0,
+      fileType: data.file_type || '',
+      status: (data.status as 'processing' | 'completed' | 'failed' | 'canceled') || 'completed',
+      uploadedAt: data.uploaded_at || '',
+      updatedAt: data.updated_at,
+      chunkCount: data.chunk_count,
+      vectorIds: data.vector_ids,
+    };
+  }
+
 
   /**
    * Upload multiple file materials
@@ -64,6 +136,7 @@ class MaterialService {
       if (data.moduleId) formData.append('module_id', data.moduleId);
       if (data.topicId) formData.append('topic_id', data.topicId);
       if (data.type) formData.append('material_type', data.type);
+      if (data.fileType) formData.append('file_type', data.fileType);
       
       // Append file-specific metadata if provided
       if (metadata) {

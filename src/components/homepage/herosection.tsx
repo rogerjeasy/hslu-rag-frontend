@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { useState, useEffect, ReactNode, JSX } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useStatisticsStore } from '@/store/statisticsStore'
@@ -10,10 +10,19 @@ import { HeroTitle } from './hero/HeroTitle'
 import { HeroBadge } from './hero/HeroBadge'
 import { HeroDescription } from './hero/HeroDescription'
 import { HeroButtons } from './hero/HeroButtons'
-import { FeatureDisplay } from './hero/FeatureDisplay'
-import { StatCounter } from './hero/StatCounter'
 import { AnimatedDots } from './hero/AnimatedDots'
 import { AnimatedWave } from './hero/AnimatedWave'
+import { AnimatedFeatureCarousel } from './hero/FeatureDisplay'
+import { StatCounter } from './hero/StatCounter'
+
+// Import feature animation components
+import {
+  FeatureQAAnimation,
+  FeatureSummaryAnimation,
+  FeatureQuizAnimation,
+  FeatureConceptAnimation,
+  FeatureGapAnimation
+} from './hero/FeatureAnimations'
 
 import {
   Brain, 
@@ -25,9 +34,48 @@ import {
   BookOpenCheck
 } from 'lucide-react'
 
-export function HeroSection() {
-  const [isMounted, setIsMounted] = useState(false)
-  const [activeFeature, setActiveFeature] = useState(0)
+// Define types
+interface BackgroundImage {
+  url: string;
+  alt: string;
+}
+
+interface Feature {
+  icon: ReactNode;
+  title: string;
+  description: string;
+  color: string;
+  animation: () => JSX.Element;
+}
+
+interface Stat {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  delay: number;
+  increment: number;
+  duration: number;
+}
+
+// Background images from remote sources - with original colors, no transformations
+const backgroundImages: BackgroundImage[] = [
+  {
+    url: "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
+    alt: "University campus with students"
+  },
+  {
+    url: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2071&q=80",
+    alt: "Modern university lecture hall"
+  },
+  {
+    url: "https://images.unsplash.com/photo-1523240795612-9a054b0db644?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2070&q=80",
+    alt: "Students working on computers"
+  }
+]
+
+export function HeroSection(): JSX.Element {
+  const [isMounted, setIsMounted] = useState<boolean>(false)
+  const [currentBgIndex, setCurrentBgIndex] = useState<number>(0)
   const router = useRouter()
 
   const { 
@@ -41,16 +89,18 @@ export function HeroSection() {
     // Fetch public statistics
     fetchPublicStatistics()
     
-    // Cycle through features automatically
-    const interval = setInterval(() => {
-      setActiveFeature(prev => (prev + 1) % features.length)
-    }, 5000)
+    // Cycle through background images
+    const bgInterval = setInterval(() => {
+      setCurrentBgIndex(prev => (prev + 1) % backgroundImages.length)
+    }, 8000)
     
-    return () => clearInterval(interval)
+    return () => {
+      clearInterval(bgInterval)
+    }
   }, [fetchPublicStatistics])
 
   // App features with animations
-  const features = [
+  const features: Feature[] = [
     {
       icon: <MessageSquare className="h-6 w-6" />,
       title: "Course-Specific Question Answering",
@@ -89,11 +139,11 @@ export function HeroSection() {
   ]
 
   // Stats with animations
-  const stats = [
+  const stats: Stat[] = [
     { 
       icon: <Brain className="w-5 h-5 text-blue-500" />,
       label: 'Courses Supported', 
-      value: publicStats?.totalCourses ? `${publicStats.totalCourses}+` : '12+',
+      value: publicStats?.totalCourses ? `${publicStats.totalCourses}+` : '3+',
       delay: 0.6,
       increment: 1,
       duration: 3
@@ -101,7 +151,7 @@ export function HeroSection() {
     { 
       icon: <MessageSquare className="w-5 h-5 text-blue-500" />,
       label: 'Questions Answered', 
-      value: '15,000+',
+      value: '15000+',
       delay: 0.7,
       increment: 500,
       duration: 3 
@@ -109,18 +159,18 @@ export function HeroSection() {
     { 
       icon: <Users className="w-5 h-5 text-blue-500" />,
       label: 'Active Students', 
-      value: publicStats?.totalUsers ? `${publicStats.totalUsers.toLocaleString()}+` : '500+',
+      value: publicStats?.totalUsers ? `${publicStats.totalUsers.toLocaleString()}+` : '4+',
       delay: 0.8,
       increment: 25,
       duration: 3
     }
   ]
 
-  const handleGetStarted = () => {
+  const handleGetStarted = (): void => {
     router.push('/register')
   }
 
-  const scrollToFeatures = () => {
+  const scrollToFeatures = (): void => {
     const featuresSection = document.getElementById('features')
     if (featuresSection) {
       featuresSection.scrollIntoView({ behavior: 'smooth' })
@@ -128,18 +178,35 @@ export function HeroSection() {
   }
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-white to-blue-50 min-h-screen flex items-center">
-      {/* Full page background image */}
+    <section className="relative overflow-hidden min-h-screen flex items-center">
+      {/* Animated background images - No opacity, filters or transformations */}
       <div className="absolute inset-0 z-0">
-        <Image 
-          src="/assets/hslu.png" 
-          alt="HSLU Campus" 
-          fill 
-          className="object-cover object-right-bottom opacity-15"
-          priority
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-white/70 to-blue-50/70"></div>
+        <AnimatePresence>
+          {backgroundImages.map((image, index) => (
+            index === currentBgIndex && (
+              <motion.div 
+                key={image.url} 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 1.5 }}
+                className="absolute inset-0"
+              >
+                <Image 
+                  src={image.url}
+                  alt={image.alt}
+                  fill 
+                  className="object-cover object-center" // No opacity, showing original colors
+                  priority={index === 0}
+                />
+              </motion.div>
+            )
+          ))}
+        </AnimatePresence>
       </div>
+      
+      {/* Content overlay to ensure text readability */}
+      <div className="absolute inset-0 z-5 bg-transparent pointer-events-none"></div>
       
       {/* Animated background dots */}
       {isMounted && <AnimatedDots />}
@@ -147,7 +214,7 @@ export function HeroSection() {
       {/* Main Content */}
       <div className="relative z-10 mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 py-16 md:py-20 flex flex-col lg:flex-row items-center justify-between gap-12">
         {/* Left side: Content */}
-        <div className="flex flex-col max-w-2xl">
+        <div className="flex flex-col max-w-2xl bg-white/80 p-6 rounded-xl">
           {/* Badge */}
           {isMounted && <HeroBadge />}
           
@@ -171,7 +238,7 @@ export function HeroSection() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.6, delay: 0.4 }}
-              className="grid grid-cols-3 gap-4 bg-white/80 rounded-xl p-4 shadow-sm border border-blue-50"
+              className="grid grid-cols-3 gap-4 bg-white rounded-xl p-4 shadow-sm border border-blue-100 mt-6"
             >
               {stats.map((stat, i) => (
                 <StatCounter 
@@ -190,43 +257,34 @@ export function HeroSection() {
         
         {/* Right side: Animated Features */}
         <div className="w-full max-w-md">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.6 }}
-            className="bg-white rounded-xl shadow-xl overflow-hidden border border-gray-100"
-          >
-            {/* Feature selector tabs */}
-            <div className="flex overflow-x-auto scrollbar-hide p-2 bg-gray-50 border-b border-gray-100">
-              {features.map((feature, index) => (
-                <motion.button
-                  key={feature.title}
-                  className={`flex items-center px-3 py-2 text-sm rounded-lg mr-2 whitespace-nowrap ${
-                    activeFeature === index 
-                      ? 'bg-blue-50 text-blue-700 font-medium' 
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-                  onClick={() => setActiveFeature(index)}
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
-                >
-                  <span className={`w-6 h-6 flex items-center justify-center rounded-full mr-2 ${
-                    activeFeature === index ? feature.color + ' text-white' : 'bg-gray-200'
-                  }`}>
-                    {feature.icon}
-                  </span>
-                  <span className="hidden sm:inline">{feature.title.split(' ')[0]}</span>
-                </motion.button>
-              ))}
-            </div>
-            
-            {/* Feature content */}
-            <FeatureDisplay 
-              features={features} 
-              activeFeature={activeFeature} 
-            />
-          </motion.div>
+          {isMounted && (
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.6 }}
+            >
+              <AnimatedFeatureCarousel 
+                features={features}
+                interval={5000}
+                showControls={true}
+              />
+            </motion.div>
+          )}
         </div>
+      </div>
+      
+      {/* Background image pagination dots */}
+      <div className="absolute bottom-16 left-1/2 transform -translate-x-1/2 z-20 flex space-x-2">
+        {backgroundImages.map((_, index) => (
+          <button
+            key={index}
+            onClick={() => setCurrentBgIndex(index)}
+            className={`w-2 h-2 rounded-full transition-all duration-300 ${
+              currentBgIndex === index ? 'bg-blue-500 w-4' : 'bg-gray-300 hover:bg-gray-400'
+            }`}
+            aria-label={`Background image ${index + 1}`}
+          />
+        ))}
       </div>
       
       {/* Wave bottom */}
@@ -237,306 +295,5 @@ export function HeroSection() {
       {/* Features section anchor */}
       <div id="features" className="absolute bottom-0"></div>
     </section>
-  )
-}
-
-// Animation Components for Features
-function FeatureQAAnimation() {
-  return (
-    <div className="relative h-full w-full">
-      <motion.div 
-        className="absolute top-0 left-0 p-3 bg-gray-100 rounded-lg w-full"
-        animate={{ y: [0, -5, 0] }}
-        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-      >
-        <div className="h-2 w-3/4 bg-blue-200 rounded-full mb-2"></div>
-        <div className="h-2 w-1/2 bg-blue-200 rounded-full"></div>
-      </motion.div>
-      
-      <motion.div 
-        className="absolute top-12 left-4 right-4 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-500"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3, duration: 0.5 }}
-      >
-        <div className="h-2 w-full bg-blue-200 rounded-full mb-2"></div>
-        <div className="h-2 w-5/6 bg-blue-200 rounded-full mb-2"></div>
-        <div className="h-2 w-4/6 bg-blue-200 rounded-full"></div>
-      </motion.div>
-      
-      <motion.div 
-        className="absolute bottom-3 right-3 text-xs text-blue-400 bg-blue-50 px-2 py-1 rounded"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.8, duration: 0.5 }}
-      >
-        Source: Lecture 3, slide 12
-      </motion.div>
-    </div>
-  )
-}
-
-function FeatureSummaryAnimation() {
-  return (
-    <div className="relative h-full w-full">
-      <motion.div 
-        className="absolute top-2 left-0 right-0 p-2 bg-indigo-50 rounded-lg"
-        animate={{ 
-          x: [0, 5, 0],
-          boxShadow: [
-            "0px 0px 0px rgba(79, 70, 229, 0.2)", 
-            "0px 4px 10px rgba(79, 70, 229, 0.3)", 
-            "0px 0px 0px rgba(79, 70, 229, 0.2)"
-          ]
-        }}
-        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-      >
-        <div className="flex items-center space-x-2 mb-1">
-          <div className="w-3 h-3 rounded-full bg-indigo-400"></div>
-          <div className="h-2 w-24 bg-indigo-200 rounded-full"></div>
-        </div>
-        <div className="h-1.5 w-full bg-indigo-100 rounded-full mb-1.5"></div>
-        <div className="h-1.5 w-full bg-indigo-100 rounded-full mb-1.5"></div>
-        <div className="h-1.5 w-2/3 bg-indigo-100 rounded-full"></div>
-      </motion.div>
-      
-      <motion.div 
-        className="absolute top-24 left-3 right-3 p-2 bg-indigo-50/80 rounded-lg"
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.5, duration: 0.5 }}
-      >
-        <div className="flex gap-2 mb-2">
-          <motion.div 
-            className="h-3 w-3 rounded-full bg-indigo-300"
-            animate={{ scale: [1, 1.2, 1] }}
-            transition={{ duration: 1, repeat: Infinity, repeatDelay: 1 }}
-          />
-          <div className="h-2 w-40 mt-0.5 bg-indigo-200 rounded-full"></div>
-        </div>
-        <div className="flex gap-2">
-          <motion.div 
-            className="h-3 w-3 rounded-full bg-indigo-300"
-            animate={{ scale: [1, 1.2, 1] }}
-            transition={{ duration: 1, repeat: Infinity, repeatDelay: 1, delay: 0.3 }}
-          />
-          <div className="h-2 w-32 mt-0.5 bg-indigo-200 rounded-full"></div>
-        </div>
-      </motion.div>
-      
-      <motion.div 
-        className="absolute bottom-0 left-4 right-0 h-6 bg-indigo-100 rounded-full"
-        initial={{ width: "30%" }}
-        animate={{ width: "80%" }}
-        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-      >
-        <div className="h-full w-full bg-indigo-400 rounded-full relative overflow-hidden">
-          <motion.div 
-            className="absolute inset-0 bg-indigo-200"
-            animate={{ x: ["-100%", "100%"] }}
-            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-          />
-        </div>
-      </motion.div>
-    </div>
-  )
-}
-
-function FeatureQuizAnimation() {
-  return (
-    <div className="relative h-full w-full">
-      <motion.div 
-        className="absolute top-0 left-0 right-0 p-3 bg-purple-50 rounded-lg"
-        animate={{ scale: [1, 1.02, 1] }}
-        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-      >
-        <div className="h-2 w-5/6 bg-purple-200 rounded-full mb-3"></div>
-        
-        <div className="flex space-x-2 mb-2">
-          <motion.div 
-            className="h-4 w-4 rounded-full border-2 border-purple-300"
-            animate={{ borderColor: ["#d8b4fe", "#a855f7", "#d8b4fe"] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          />
-          <div className="h-2 w-24 bg-purple-200 rounded-full mt-1"></div>
-        </div>
-        
-        <div className="flex space-x-2 mb-2">
-          <motion.div 
-            className="h-4 w-4 rounded-full border-2 border-purple-300"
-            animate={{ borderColor: ["#d8b4fe", "#a855f7", "#d8b4fe"] }}
-            transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
-          />
-          <div className="h-2 w-32 bg-purple-200 rounded-full mt-1"></div>
-        </div>
-        
-        <div className="flex space-x-2">
-          <motion.div 
-            className="h-4 w-4 rounded-full border-2 border-purple-300"
-            animate={{ borderColor: ["#d8b4fe", "#a855f7", "#d8b4fe"] }}
-            transition={{ duration: 2, repeat: Infinity, delay: 1 }}
-          />
-          <div className="h-2 w-28 bg-purple-200 rounded-full mt-1"></div>
-        </div>
-      </motion.div>
-      
-      <motion.div 
-        className="absolute bottom-4 right-4 px-3 py-1.5 bg-purple-500 text-white rounded-lg text-xs font-medium"
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: 1.2, duration: 0.3, type: "spring" }}
-      >
-        Submit
-      </motion.div>
-
-      <motion.div 
-        className="absolute bottom-4 left-4 flex items-center gap-1.5"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1, duration: 0.5 }}
-      >
-        <div className="w-2 h-2 bg-purple-300 rounded-full"/>
-        <div className="w-2 h-2 bg-purple-500 rounded-full"/>
-        <div className="w-2 h-2 bg-purple-300 rounded-full"/>
-        <div className="w-2 h-2 bg-purple-300 rounded-full"/>
-      </motion.div>
-    </div>
-  )
-}
-
-function FeatureConceptAnimation() {
-  return (
-    <div className="relative h-full w-full overflow-hidden">
-      <motion.div 
-        className="absolute top-0 left-0 right-0 p-2 bg-cyan-50 rounded-lg flex flex-col space-y-2"
-      >
-        <div className="flex items-center">
-          <div className="h-4 w-4 rounded-md bg-cyan-400 mr-2"></div>
-          <div className="h-2 w-20 bg-cyan-200 rounded-full"></div>
-        </div>
-        
-        <motion.div 
-          className="h-2 w-full bg-gradient-to-r from-cyan-200 to-cyan-400 rounded-full"
-          animate={{ 
-            width: ["60%", "100%", "60%"],
-          }}
-          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-        />
-        
-        <motion.div 
-          className="p-1.5 bg-white rounded border border-cyan-200 flex"
-          animate={{ y: [0, -2, 0] }}
-          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-        >
-          <div className="w-6 h-6 rounded bg-cyan-100 mr-2 flex-shrink-0"></div>
-          <div className="space-y-1 flex-grow">
-            <div className="h-1.5 w-full bg-cyan-100 rounded-full"></div>
-            <div className="h-1.5 w-3/4 bg-cyan-100 rounded-full"></div>
-          </div>
-        </motion.div>
-        
-        <motion.div 
-          className="p-1.5 bg-white rounded border border-cyan-200 flex"
-          animate={{ y: [0, -2, 0] }}
-          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-        >
-          <div className="w-6 h-6 rounded bg-cyan-100 mr-2 flex-shrink-0"></div>
-          <div className="space-y-1 flex-grow">
-            <div className="h-1.5 w-full bg-cyan-100 rounded-full"></div>
-            <div className="h-1.5 w-2/3 bg-cyan-100 rounded-full"></div>
-          </div>
-        </motion.div>
-      </motion.div>
-      
-      <motion.div 
-        className="absolute bottom-3 right-3 h-16 w-16 bg-cyan-500/10 rounded-lg overflow-hidden flex items-center justify-center"
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ delay: 0.8, duration: 0.5, type: "spring" }}
-      >
-        <motion.div 
-          className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full"
-          animate={{ rotate: 360 }}
-          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-        />
-      </motion.div>
-    </div>
-  )
-}
-
-function FeatureGapAnimation() {
-  return (
-    <div className="relative h-full w-full">
-      <motion.div 
-        className="absolute top-1 left-0 right-0 p-2 bg-green-50 rounded-lg"
-      >
-        <div className="flex justify-between items-center mb-2">
-          <div className="h-2 w-20 bg-green-200 rounded-full"></div>
-          <div className="h-2 w-8 bg-green-200 rounded-full"></div>
-        </div>
-        
-        <div className="space-y-2">
-          <div className="flex items-center">
-            <motion.div 
-              className="h-3 bg-green-200 rounded-full mr-2"
-              initial={{ width: "30%" }}
-              animate={{ width: "90%" }}
-              transition={{ duration: 2, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
-            />
-            <div className="text-xs text-green-600 font-medium">90%</div>
-          </div>
-          
-          <div className="flex items-center">
-            <motion.div 
-              className="h-3 bg-green-200 rounded-full mr-2"
-              initial={{ width: "30%" }}
-              animate={{ width: "75%" }}
-              transition={{ duration: 2, repeat: Infinity, repeatType: "reverse", ease: "easeInOut", delay: 0.3 }}
-            />
-            <div className="text-xs text-green-600 font-medium">75%</div>
-          </div>
-          
-          <div className="flex items-center">
-            <motion.div 
-              className="h-3 bg-red-200 rounded-full mr-2"
-              initial={{ width: "30%" }}
-              animate={{ width: "45%" }}
-              transition={{ duration: 2, repeat: Infinity, repeatType: "reverse", ease: "easeInOut", delay: 0.6 }}
-            />
-            <motion.div 
-              className="text-xs text-red-500 font-medium"
-              animate={{ opacity: [1, 0.5, 1] }}
-              transition={{ duration: 1, repeat: Infinity }}
-            >
-              45%
-            </motion.div>
-          </div>
-          
-          <div className="flex items-center">
-            <motion.div 
-              className="h-3 bg-green-200 rounded-full mr-2"
-              initial={{ width: "30%" }}
-              animate={{ width: "60%" }}
-              transition={{ duration: 2, repeat: Infinity, repeatType: "reverse", ease: "easeInOut", delay: 0.9 }}
-            />
-            <div className="text-xs text-green-600 font-medium">60%</div>
-          </div>
-        </div>
-      </motion.div>
-
-      <motion.div 
-        className="absolute bottom-3 right-3 flex items-center gap-1 bg-green-100 px-2 py-1 rounded text-xs text-green-700"
-        initial={{ opacity: 0, x: 10 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 1, duration: 0.3 }}
-      >
-        <motion.div 
-          className="w-2 h-2 bg-green-500 rounded-full"
-          animate={{ scale: [1, 1.5, 1] }}
-          transition={{ duration: 1, repeat: Infinity }}
-        />
-        Recommended topic
-      </motion.div>
-    </div>
   )
 }

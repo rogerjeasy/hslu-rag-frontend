@@ -1,4 +1,5 @@
-// src/types/material.types.ts
+// src/types/material.types.ts - Updated with MaterialUpdate interface
+
 export type Material = {
   id: string;
   title: string;
@@ -14,6 +15,8 @@ export type Material = {
   uploadedAt: string;
   updatedAt?: string;
   batchId?: string; // Optional reference to batch ID
+  chunkCount?: number; // Added for material detail drawer
+  vectorIds?: string[]; // Added for material detail drawer
 };
 
 export type ProcessingStage =
@@ -49,6 +52,7 @@ export interface MaterialUploadRequest {
   title?: string;
   description?: string;
   type?: string;
+  fileType?: string;
 }
 
 export interface MaterialUploadResponse {
@@ -67,9 +71,18 @@ export interface MaterialUploadResponse {
   batch_id?: string; // Reference to batch ID
 }
 
-// New types for batch processing
+// Added MaterialUpdate interface for edit operations
+export interface MaterialUpdate {
+  title?: string;
+  description?: string;
+  type?: string;
+  courseId?: string;
+  moduleId?: string;
+  topicId?: string;
+}
 
-export type BatchStatus = 
+// New types for batch processing
+export type BatchStatus =
   | 'processing'
   | 'completed'
   | 'completed_with_errors'

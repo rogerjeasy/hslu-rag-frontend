@@ -1,10 +1,12 @@
-// src/store/materialStore.ts
+// src/store/materialStore.ts - Updated with updateMaterial method
+
 import { create } from 'zustand';
 import { 
   MaterialProcessingStatus, 
   Material, 
   MaterialUploadRequest, 
-  MaterialUploadResponse 
+  MaterialUploadResponse,
+  MaterialUpdate
 } from '@/types/material.types';
 import { materialService } from '@/services/material.service';
 
@@ -37,6 +39,7 @@ interface MaterialState {
   fetchMaterial: (id: string) => Promise<Material>;
   uploadMaterial: (file: File, data: MaterialUploadRequest) => Promise<Material>;
   uploadMultipleMaterials: (files: File[], data: MaterialUploadRequest, metadata?: Record<string, { title?: string, description?: string }>) => Promise<MaterialUploadResponse[]>;
+  updateMaterial: (materialId: string, data: MaterialUpdate) => Promise<Material>; // Added this method
   getProcessingStatus: (materialId: string) => Promise<MaterialProcessingStatus>;
   trackProcessingStatus: (materialId: string) => Promise<void>;
   deleteMaterial: (materialId: string) => Promise<void>;
@@ -86,6 +89,35 @@ export const useMaterialStore = create<MaterialState>((set, get) => ({
       return material;
     } catch (error) {
       console.error('Error fetching material:', error);
+      set({ 
+        error: error instanceof Error ? error.message : 'An unknown error occurred', 
+        isLoading: false 
+      });
+      throw error;
+    }
+  },
+  
+  // Add this new method for updating materials
+  updateMaterial: async (materialId, data) => {
+    set({ isLoading: true, error: null });
+    
+    try {
+      const updatedMaterial = await materialService.updateMaterial(materialId, data);
+      
+      // Update the material in the materials array
+      set((state) => ({
+        materials: state.materials.map(m => 
+          m.id === materialId ? { ...m, ...updatedMaterial } : m
+        ),
+        currentMaterial: state.currentMaterial?.id === materialId 
+          ? { ...state.currentMaterial, ...updatedMaterial } 
+          : state.currentMaterial,
+        isLoading: false
+      }));
+      
+      return updatedMaterial;
+    } catch (error) {
+      console.error('Error updating material:', error);
       set({ 
         error: error instanceof Error ? error.message : 'An unknown error occurred', 
         isLoading: false 

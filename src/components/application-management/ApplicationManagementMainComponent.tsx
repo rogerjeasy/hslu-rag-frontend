@@ -10,8 +10,9 @@ import { DashboardOverview } from '@/components/application-management/Dashboard
 import { useUserStore } from '@/store/userStore'
 import { useRouter, usePathname } from 'next/navigation'
 import StatisticsAdminPanel from './StatisticsAdminPanel';
+import MaterialsMainComponent from '../materials/MaterialsMainComponent';
 
-export type AdminView = 'dashboard' | 'users' | 'courses' | 'faq' | 'files' | 'statistics'
+export type AdminView = 'dashboard' | 'users' | 'courses' | 'faq' | 'files' | 'statistics' | 'materials'
 
 export default function ApplicationManagementPage() {
   const [currentView, setCurrentView] = useState<AdminView>('dashboard')
@@ -26,7 +27,7 @@ export default function ApplicationManagementPage() {
       const section = pathname.split('/').pop() as AdminView | undefined
       
       // If it's a valid section, set it as the current view
-      if (section && ['dashboard', 'users', 'courses', 'faq', 'files', 'statistics'].includes(section)) {
+      if (section && ['dashboard', 'users', 'courses', 'faq', 'files', 'statistics', 'materials'].includes(section)) {
         setCurrentView(section)
       }
     }
@@ -71,6 +72,8 @@ export default function ApplicationManagementPage() {
         return <FileManagement />
       case 'statistics':
         return <StatisticsAdminPanel />
+      case 'materials':
+        return <MaterialsMainComponent />
       default:
         return <DashboardOverview />
     }

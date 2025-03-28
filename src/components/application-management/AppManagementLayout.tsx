@@ -99,6 +99,12 @@ export function AppManagementLayout({
       description: 'Upload and manage course files'
     },
     {
+      id: 'materials',
+      label: 'Materials',
+      icon: LayoutDashboard,
+      description: 'Manage course materials and resources'
+    },
+    {
       id: 'statistics',
       label: 'Statistics',
       icon: LayoutDashboard,
