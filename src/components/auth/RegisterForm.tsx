@@ -152,13 +152,13 @@ export function RegisterForm(): JSX.Element {
   };
 
   return (
-    <div className="relative w-full max-w-md space-y-6 mx-auto px-4 sm:px-0">
+    <div className="relative w-full max-w-md mx-auto px-4 sm:px-0 py-8">
       {/* Animated background */}
       <div className="absolute inset-0 overflow-hidden rounded-2xl">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-100 to-indigo-100 opacity-90"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-indigo-50 opacity-80"></div>
         
         {/* Static particles with fixed positions to avoid hydration issues */}
-        {Array.from({ length: 12 }).map((_, i) => (
+        {Array.from({ length: 20 }).map((_, i) => (
           <motion.div
             key={`particle-${i}`}
             custom={i}
@@ -177,7 +177,7 @@ export function RegisterForm(): JSX.Element {
             }}
             initial="hidden"
             animate="visible"
-            className="absolute w-8 h-8 rounded-full bg-blue-400 opacity-10"
+            className="absolute rounded-full bg-blue-400 opacity-10"
             style={{
               top: `${20 + (i * 4) % 60}%`,
               left: `${15 + (i * 5) % 70}%`,
@@ -187,15 +187,15 @@ export function RegisterForm(): JSX.Element {
           />
         ))}
         
-        {/* Frosted glass effect - lighter blur for better visibility */}
-        <div className="absolute inset-0 backdrop-blur-[2px]"></div>
+        {/* Frosted glass effect */}
+        <div className="absolute inset-0 backdrop-blur-sm"></div>
       </div>
 
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="relative text-center z-10 pt-4"
+        className="relative text-center z-10 mb-6"
       >
         <div className="inline-flex items-center justify-center p-2 mb-2 rounded-xl bg-white shadow-sm">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -205,7 +205,7 @@ export function RegisterForm(): JSX.Element {
         <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">
           Create your account
         </h2>
-        <p className="mt-2 text-sm text-gray-700">
+        <p className="mt-2 text-sm text-gray-600">
           Join HSLU Data Science Exam Preparation Assistant
         </p>
       </motion.div>
@@ -214,13 +214,13 @@ export function RegisterForm(): JSX.Element {
         variants={formVariants}
         initial="hidden"
         animate="visible"
-        className="relative mt-6 space-y-5 p-4 sm:p-6 bg-white shadow-xl rounded-xl border border-blue-100 z-10"
+        className="relative mt-6 space-y-4 p-4 sm:p-6 bg-white/80 backdrop-blur-sm rounded-xl shadow-xl border border-blue-100 z-10"
         onSubmit={handleSubmit}
       >
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {fields.map((field, index) => (
             <div key={field.id} className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 z-10">
+              <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none text-gray-400 z-10">
                 {getIconForField(field.id)}
               </div>
               <div className="pl-11">
@@ -261,6 +261,7 @@ export function RegisterForm(): JSX.Element {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4, duration: 0.4 }}
+          className="mt-6"
         >
           <Button
             type="submit"
@@ -286,8 +287,13 @@ export function RegisterForm(): JSX.Element {
           </Button>
         </motion.div>
 
-        <SocialLogin customIndex={9} />
-        <AuthLinks mode="register" customIndex={10} />
+        <div className="mt-6 pt-4 border-t border-gray-100">
+          <SocialLogin customIndex={9} />
+        </div>
+        
+        <div className="mt-4 pt-2">
+          <AuthLinks mode="register" customIndex={10} />
+        </div>
       </motion.form>
       
       {/* Registration success modal */}
@@ -296,9 +302,9 @@ export function RegisterForm(): JSX.Element {
         onClose={handleCloseModal} 
       />
       
-      {/* Decorative elements */}
-      <div className="absolute top-[-50px] right-[-20px] w-32 h-32 bg-blue-200 rounded-full opacity-20 blur-xl z-0"></div>
-      <div className="absolute bottom-[-30px] left-[-30px] w-40 h-40 bg-indigo-200 rounded-full opacity-20 blur-xl z-0"></div>
+      {/* Decorative elements - positioned to not interfere with small screens */}
+      <div className="absolute top-[-50px] right-[-20px] w-24 h-24 md:w-32 md:h-32 bg-blue-200 rounded-full opacity-20 blur-xl z-0 hidden sm:block"></div>
+      <div className="absolute bottom-[-30px] left-[-30px] w-24 h-24 md:w-40 md:h-40 bg-indigo-200 rounded-full opacity-20 blur-xl z-0 hidden sm:block"></div>
     </div>
   );
 }
