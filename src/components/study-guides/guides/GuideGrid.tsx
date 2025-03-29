@@ -2,7 +2,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { StudyGuide } from '@/types/study-guide';
+import { StudyGuide } from '@/types/study-guide.types';
 import { Course } from '@/types/course.types';
 import { GuideCard } from './GuideCard';
 import { EmptyTabState } from '../tabs/EmptyTabState';
@@ -61,7 +61,7 @@ export const GuideGrid = ({
             <GuideCard 
               guide={guide} 
               course={course} 
-              onSelect={() => onCourseSelect(guide.courseId)} 
+              onSelect={() => onCourseSelect(guide.id as string)} 
               isRecommended={isRecommended}
             />
           </motion.div>

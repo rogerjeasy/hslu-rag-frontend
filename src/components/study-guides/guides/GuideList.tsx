@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { GuideListItem } from './GuideListItem';
 import { EmptyTabState } from '../tabs/EmptyTabState';
 import { Course } from '@/types/course.types';
-import { StudyGuide } from '@/types/study-guide';
+import { StudyGuide } from '@/types/study-guide.types';
 
 interface GuideListProps {
   guides: StudyGuide[];
@@ -61,7 +61,7 @@ export const GuideList = ({
             <GuideListItem
               guide={guide} 
               course={course} 
-              onSelect={() => onCourseSelect(guide.courseId)} 
+              onSelect={() => onCourseSelect(guide.id as string)} 
               isRecommended={isRecommended}
             />
           </motion.div>

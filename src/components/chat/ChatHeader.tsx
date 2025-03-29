@@ -12,7 +12,7 @@ import {
   Trash2,
   Calendar
 } from 'lucide-react';
-import { Conversation } from '@/types/conversation';
+import { Conversation } from '@/types/conversation.types';
 import ModelSelector from './ModelSelector';
 import { useRouter } from 'next/navigation';
 import { useConversationStore } from '@/store/conversationStore';
@@ -126,8 +126,9 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
   };
 
   // Format the creation date
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+  const formatDate = (timestamp: number) => {
+    // Convert timestamp to milliseconds if it's in seconds
+    const date = new Date(timestamp * 1000);
     return new Intl.DateTimeFormat('en-US', {
       month: 'short',
       day: 'numeric',

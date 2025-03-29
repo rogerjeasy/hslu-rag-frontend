@@ -16,7 +16,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { StudyGuide, GuideType } from '@/types/study-guide';
+import { StudyGuide, GuideType } from '@/types/study-guide.types';
 import { Course } from '@/types/course.types';
 import { formatDate, getGuideBorderColor, getGuideTypeLabel } from '@/utils/guide-utils';
 
@@ -81,7 +81,7 @@ export const GuideListItem = ({
               {guide.lastStudied && (
                 <div className="flex items-center gap-1 text-xs text-gray-500 whitespace-nowrap">
                   <Calendar className="h-3.5 w-3.5 shrink-0" />
-                  <span>{formatDate(guide.lastStudied)}</span>
+                  <span>{guide.lastStudied}</span>
                 </div>
               )}
             </div>

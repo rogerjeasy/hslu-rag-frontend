@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 // import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
+import { useRAGStore } from '@/store/ragStore';
 
 export function CreateStudyGuide() {
   const router = useRouter();
@@ -57,14 +58,26 @@ export function CreateStudyGuide() {
     try {
       setIsSubmitting(true);
       
-      await createGuide(
-        formData.topic,
-        formData.courseId,
-        formData.detailLevel,
-        formData.format,
-        formData.includePracticeQuestions,
-        formData.moduleId || undefined
-      );
+      // Create the study guide request object based on form data
+      const studyGuideRequest = {
+        topic: formData.topic,
+        moduleId: formData.moduleId || undefined,
+        detailLevel: formData.detailLevel,
+        format: formData.format,
+        courseId: formData.courseId,
+        additionalParams: {
+          courseName: courses.find(c => c.id === formData.courseId)?.name || '',
+        }
+      };
+      
+      // Import and use the RAG store
+      const { generateStudyGuide } = useRAGStore.getState();
+      
+      // Generate the study guide using the RAG service
+      const response = await generateStudyGuide(studyGuideRequest);
+      
+      // Store the response or handle it as needed
+      // You might want to pass the response ID to the redirect
       
       // Navigate to the guides page or specific guide
       router.push('/study-guides');
@@ -75,7 +88,6 @@ export function CreateStudyGuide() {
       setIsSubmitting(false);
     }
   };
-
   // Step validation
   const isStepValid = () => {
     if (currentStep === 0) {

@@ -1,12 +1,11 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Message } from '@/types/conversation';
+import { Message } from '@/types/conversation.types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Copy, Check, BookOpen, ExternalLink } from 'lucide-react';
 import Markdown from '@/components/ui/Markdown';
-import { Citation } from '@/types/query';
 import {
   Tooltip,
   TooltipContent,
@@ -20,6 +19,16 @@ import {
 } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+
+// Define the Citation interface
+interface Citation {
+  materialId?: string;
+  title?: string;
+  contentPreview?: string;
+  pageNumber?: number;
+  chunkIndex?: number;
+  fileUrl?: string;
+}
 
 interface ChatMessageProps {
   message: Message;
@@ -108,7 +117,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
                 <div className="space-y-3">
                   {citations.map((citation, index) => (
                     <div 
-                      key={`${citation.materialId}-${index}`}
+                      key={`${citation.materialId || 'material'}-${index}`}
                       className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md p-3"
                     >
                       <div className="flex justify-between items-start mb-2">
@@ -116,7 +125,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
                           {citation.pageNumber ? `Page ${citation.pageNumber}` : 'Document'}
                         </Badge>
                         <Badge variant="outline" className="text-xs">
-                          Chunk {citation.chunkIndex}
+                          Chunk {citation.chunkIndex || index + 1}
                         </Badge>
                       </div>
                       
@@ -125,7 +134,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
                       </h4>
                       
                       <p className="text-xs text-slate-700 dark:text-slate-300 line-clamp-2 mb-2">
-                        {citation.contentPreview}
+                        {citation.contentPreview || 'No preview available'}
                       </p>
                       
                       {citation.fileUrl && (
