@@ -23,9 +23,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { StudyGuide, GuideType } from '@/types/study-guide';
+import { StudyGuide, GuideType } from '@/types/study-guide.types';
 import { Course } from '@/types/course.types';
-import { formatDate, getGuideBorderColor, getGuideTypeLabel } from '@/utils/guide-utils';
+import { getGuideBorderColor, getGuideTypeLabel } from '@/utils/guide-utils';
 
 interface GuideCardProps {
   guide: StudyGuide;
@@ -103,7 +103,7 @@ export const GuideCard = ({
             {guide.lastStudied && (
               <div className="flex items-center">
                 <Calendar className="h-3.5 w-3.5 mr-1 shrink-0" />
-                <span>Last studied {formatDate(guide.lastStudied)}</span>
+                <span>Last studied {guide.lastStudied}</span>
               </div>
             )}
           </div>
@@ -115,7 +115,7 @@ export const GuideCard = ({
           className="w-full hover:bg-primary/5 transition-colors"
           onClick={onSelect}
         >
-          Continue Studying
+          View Guide
         </Button>
       </CardFooter>
     </Card>

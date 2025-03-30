@@ -1,19 +1,22 @@
 // src/store/studyGuideStore.ts
 import { create } from 'zustand';
 import { 
-  StudyGuide,
-  StudyGuideSummary,
+  StudyGuideSummary, 
+  DeleteResponse, 
+  DeleteAllResponse,
   DetailLevel,
   StudyGuideFormat,
-  StudyGuideSection
-} from '@/types/study-guide';
-import { studyGuideService } from '@/services/study.guides.service';
+  StudyGuideResponse
+} from '@/types/study-guide.types';
+import { studyGuideService } from '@/services/study-guide.service';
+import { useRAGStore } from '@/store/ragStore';
+import { RAGResponse } from '@/types/rag.types';
 
 interface StudyGuideState {
   // Data
-  guides: StudyGuideSummary[];
+  studyGuides: StudyGuideSummary[];
   filteredGuides: StudyGuideSummary[];
-  currentGuide: StudyGuide | null;
+  currentStudyGuide: StudyGuideResponse | null;
   isLoading: boolean;
   error: string | null;
   
@@ -21,44 +24,41 @@ interface StudyGuideState {
   searchTerm: string;
   selectedCourse: string | null;
   selectedFormat: StudyGuideFormat | null;
-  selectedDetailLevel: DetailLevel | null;
   
   // Filter actions
   setSearchTerm: (term: string) => void;
   setSelectedCourse: (courseId: string | null) => void;
   setSelectedFormat: (format: StudyGuideFormat | null) => void;
-  setSelectedDetailLevel: (detailLevel: DetailLevel | null) => void;
   applyFilters: () => void;
   resetFilters: () => void;
   
   // Data actions
-  fetchGuides: (courseId?: string) => Promise<void>;
-  getGuide: (id: string) => Promise<StudyGuide>;
+  fetchStudyGuides: (limit?: number) => Promise<void>;
+  getStudyGuide: (id: string) => Promise<StudyGuideResponse>;
   createGuide: (
-    topic: string, 
-    courseId: string, 
-    detailLevel?: DetailLevel,
-    format?: StudyGuideFormat,
+    topic: string,
+    courseId: string,
+    detailLevel: DetailLevel,
+    format: StudyGuideFormat,
     includePracticeQuestions?: boolean,
-    moduleId?: string, 
-    topicId?: string
-  ) => Promise<StudyGuide>;
-  updateGuide: (id: string, title?: string, description?: string) => Promise<StudyGuide>;
-  deleteGuide: (id: string) => Promise<void>;
-  findSectionsByKeywords: (keywords: string[]) => StudyGuideSection[];
+    moduleId?: string
+  ) => Promise<RAGResponse>;
+  deleteStudyGuide: (id: string) => Promise<DeleteResponse>;
+  deleteAllContent: () => Promise<DeleteAllResponse>;
+  resetError: () => void;
+  setCurrentStudyGuide: (guide: StudyGuideResponse | null) => void;
 }
 
 export const useStudyGuideStore = create<StudyGuideState>((set, get) => ({
   // Initial state
-  guides: [],
+  studyGuides: [],
   filteredGuides: [],
-  currentGuide: null,
+  currentStudyGuide: null,
   isLoading: false,
   error: null,
   searchTerm: '',
   selectedCourse: null,
   selectedFormat: null,
-  selectedDetailLevel: null,
   
   // Filter setters
   setSearchTerm: (term) => {
@@ -76,44 +76,23 @@ export const useStudyGuideStore = create<StudyGuideState>((set, get) => ({
     get().applyFilters();
   },
   
-  setSelectedDetailLevel: (detailLevel) => {
-    set({ selectedDetailLevel: detailLevel });
-    get().applyFilters();
-  },
-  
-  // Filter actions
   applyFilters: () => {
-    const { 
-      guides, 
-      searchTerm, 
-      selectedCourse, 
-      selectedFormat, 
-      selectedDetailLevel 
-    } = get();
+    const { studyGuides, searchTerm, selectedCourse, selectedFormat } = get();
+    let result = [...studyGuides];
     
-    let result = [...guides];
-    
-    // Apply search filter
     if (searchTerm) {
       const lowerSearchTerm = searchTerm.toLowerCase();
-      result = result.filter(
-        guide => guide.title.toLowerCase().includes(lowerSearchTerm)
+      result = result.filter(guide => 
+        guide.topic.toLowerCase().includes(lowerSearchTerm)
       );
     }
     
-    // Apply course filter (redundant if we're already fetching by course)
     if (selectedCourse) {
       result = result.filter(guide => guide.courseId === selectedCourse);
     }
     
-    // Apply format filter
     if (selectedFormat) {
       result = result.filter(guide => guide.format === selectedFormat);
-    }
-    
-    // Apply detail level filter
-    if (selectedDetailLevel) {
-      result = result.filter(guide => guide.detailLevel === selectedDetailLevel);
     }
     
     set({ filteredGuides: result });
@@ -124,22 +103,20 @@ export const useStudyGuideStore = create<StudyGuideState>((set, get) => ({
       searchTerm: '',
       selectedCourse: null,
       selectedFormat: null,
-      selectedDetailLevel: null,
-      filteredGuides: get().guides
+      filteredGuides: get().studyGuides
     });
   },
   
   // Data actions
-  fetchGuides: async (courseId) => {
+  fetchStudyGuides: async (limit = 50) => {
     set({ isLoading: true, error: null });
     
     try {
-      const guides = await studyGuideService.getStudyGuides(courseId);
+      const studyGuides = await studyGuideService.getStudyGuides(limit);
       set({ 
-        guides, 
-        filteredGuides: guides, 
-        isLoading: false,
-        selectedCourse: courseId || null
+        studyGuides, 
+        filteredGuides: studyGuides, 
+        isLoading: false 
       });
     } catch (error) {
       console.error('Error fetching study guides:', error);
@@ -150,13 +127,13 @@ export const useStudyGuideStore = create<StudyGuideState>((set, get) => ({
     }
   },
   
-  getGuide: async (id) => {
+  getStudyGuide: async (id) => {
     set({ isLoading: true, error: null });
     
     try {
-      const guide = await studyGuideService.getStudyGuide(id);
-      set({ currentGuide: guide, isLoading: false });
-      return guide;
+      const studyGuide = await studyGuideService.getStudyGuide(id);
+      set({ currentStudyGuide: studyGuide, isLoading: false });
+      return studyGuide;
     } catch (error) {
       console.error('Error fetching study guide:', error);
       set({ 
@@ -168,58 +145,35 @@ export const useStudyGuideStore = create<StudyGuideState>((set, get) => ({
   },
   
   createGuide: async (
-    topic, 
-    courseId, 
-    detailLevel = DetailLevel.MEDIUM,
-    format = StudyGuideFormat.OUTLINE,
+    topic,
+    courseId,
+    detailLevel,
+    format,
     includePracticeQuestions = false,
-    moduleId, 
-    topicId
+    moduleId
   ) => {
     set({ isLoading: true, error: null });
     
     try {
-      const guide = await studyGuideService.startStudyGuide(
-        topic, courseId, detailLevel, format, includePracticeQuestions, moduleId, topicId
-      );
+      const studyGuideRequest = {
+        topic,
+        moduleId,
+        detailLevel,
+        format,
+        additionalParams: {
+          courseId,
+          requestId: `guide-${Date.now()}`,
+          includePracticeQuestions: includePracticeQuestions
+        }
+      };
       
-      // Add the new guide to the list if we're already showing guides for this course
-      if (get().selectedCourse === courseId || !get().selectedCourse) {
-        set(state => {
-          // Create a summary version for the list
-          const guideSummary: StudyGuideSummary = {
-            id: guide.id,
-            title: guide.title,
-            courseId: guide.courseId,
-            moduleId: guide.moduleId,
-            topicId: guide.topicId,
-            createdAt: guide.createdAt,
-            updatedAt: guide.updatedAt,
-            detailLevel: guide.detailLevel,
-            format: guide.format,
-            sectionCount: guide.sections.length
-          };
-          
-          const updatedGuides = [...state.guides, guideSummary];
-          
-          return {
-            guides: updatedGuides,
-            filteredGuides: updatedGuides,
-            currentGuide: guide,
-            isLoading: false
-          };
-        });
-        
-        // Re-apply any filters
-        get().applyFilters();
-      } else {
-        set({
-          currentGuide: guide,
-          isLoading: false
-        });
-      }
+      const { generateStudyGuide } = useRAGStore.getState();
+      const response = await generateStudyGuide(studyGuideRequest);
       
-      return guide;
+      await get().fetchStudyGuides();
+      
+      set({ isLoading: false });
+      return response;
     } catch (error) {
       console.error('Error creating study guide:', error);
       set({ 
@@ -230,80 +184,26 @@ export const useStudyGuideStore = create<StudyGuideState>((set, get) => ({
     }
   },
   
-  updateGuide: async (id, title, description) => {
+  deleteStudyGuide: async (id) => {
     set({ isLoading: true, error: null });
     
     try {
-      const updateData: { title?: string; description?: string } = {};
-      if (title !== undefined) updateData.title = title;
-      if (description !== undefined) updateData.description = description;
+      const response = await studyGuideService.deleteStudyGuide(id);
       
-      const updatedGuide = await studyGuideService.updateStudyGuide(id, updateData);
-      
-      set(state => {
-        // Update the guide in the list
-        const updatedGuides = state.guides.map(guide => 
-          guide.id === id 
-            ? { 
-                ...guide, 
-                title: updatedGuide.title 
-              } 
-            : guide
-        );
+      if (response.success) {
+        // Update the study guides list
+        set(state => ({
+          studyGuides: state.studyGuides.filter(guide => guide.id !== id),
+          currentStudyGuide: state.currentStudyGuide && 'meta' in state.currentStudyGuide && 
+            state.currentStudyGuide.meta?.document_id === id ? null : state.currentStudyGuide
+        }));
         
-        // Update current guide if it's the one being edited
-        const currentGuide = 
-          state.currentGuide && state.currentGuide.id === id
-            ? updatedGuide
-            : state.currentGuide;
-        
-        return {
-          guides: updatedGuides,
-          currentGuide,
-          isLoading: false
-        };
-      });
+        // Re-apply filters
+        get().applyFilters();
+      }
       
-      // Re-apply filters
-      get().applyFilters();
-      
-      return updatedGuide;
-    } catch (error) {
-      console.error('Error updating study guide:', error);
-      set({ 
-        error: error instanceof Error ? error.message : 'An unknown error occurred', 
-        isLoading: false 
-      });
-      throw error;
-    }
-  },
-  
-  deleteGuide: async (id) => {
-    set({ isLoading: true, error: null });
-    
-    try {
-      await studyGuideService.deleteStudyGuide(id);
-      
-      set(state => {
-        const updatedGuides = state.guides.filter(guide => guide.id !== id);
-        
-        // Clear current guide if it was the one deleted
-        const currentGuide = 
-          state.currentGuide && state.currentGuide.id === id
-            ? null
-            : state.currentGuide;
-        
-        return {
-          guides: updatedGuides,
-          filteredGuides: updatedGuides,
-          currentGuide,
-          isLoading: false
-        };
-      });
-      
-      // Re-apply filters
-      get().applyFilters();
-      
+      set({ isLoading: false });
+      return response;
     } catch (error) {
       console.error('Error deleting study guide:', error);
       set({ 
@@ -314,13 +214,38 @@ export const useStudyGuideStore = create<StudyGuideState>((set, get) => ({
     }
   },
   
-  findSectionsByKeywords: (keywords) => {
-    const { currentGuide } = get();
+  deleteAllContent: async () => {
+    set({ isLoading: true, error: null });
     
-    if (!currentGuide) {
-      return [];
+    try {
+      const response = await studyGuideService.deleteAllUserContent();
+      
+      if (response.success) {
+        // Clear all study guides
+        set({
+          studyGuides: [],
+          filteredGuides: [],
+          currentStudyGuide: null
+        });
+      }
+      
+      set({ isLoading: false });
+      return response;
+    } catch (error) {
+      console.error('Error deleting all content:', error);
+      set({ 
+        error: error instanceof Error ? error.message : 'An unknown error occurred', 
+        isLoading: false 
+      });
+      throw error;
     }
-    
-    return studyGuideService.findSectionsByKeywords(currentGuide, keywords);
+  },
+  
+  resetError: () => {
+    set({ error: null });
+  },
+  
+  setCurrentStudyGuide: (guide) => {
+    set({ currentStudyGuide: guide });
   }
 }));

@@ -19,14 +19,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { 
-  QueryType, 
-  AdditionalParams,
-  QuestionAnsweringParams,
-  StudyGuideParams,
-  PracticeQuestionsParams,
-  KnowledgeGapParams
-} from '@/types/query';
+import { QueryType } from '@/types/extended-conversation.types';
 import {
   Accordion,
   AccordionContent,
@@ -35,6 +28,40 @@ import {
 } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+
+// Additional params interfaces
+interface AdditionalParams {
+  [key: string]: unknown;
+}
+
+interface QuestionAnsweringParams extends AdditionalParams {
+  temperature?: number;
+  max_length?: number;
+  include_citations?: boolean;
+}
+
+interface StudyGuideParams extends AdditionalParams {
+  detail_level?: 'basic' | 'medium' | 'comprehensive';
+  format?: 'outline' | 'notes' | 'flashcards' | 'mind_map' | 'summary';
+  include_examples?: boolean;
+  max_length?: number;
+  temperature?: number;
+}
+
+interface PracticeQuestionsParams extends AdditionalParams {
+  difficulty?: 'easy' | 'medium' | 'hard' | 'mixed';
+  question_count?: number;
+  question_types?: string[];
+  include_answers?: boolean;
+  temperature?: number;
+}
+
+interface KnowledgeGapParams extends AdditionalParams {
+  past_interactions_count?: number;
+  detail_level?: 'basic' | 'medium' | 'detailed';
+  include_study_plan?: boolean;
+  temperature?: number;
+}
 
 interface ChatSettingsProps {
   queryType: QueryType;
@@ -110,17 +137,6 @@ const ChatSettings: React.FC<ChatSettingsProps> = ({
     setLocalParams(DEFAULT_PARAMS[queryType]);
   }, [queryType]);
 
-  // Extract values with type safety
-//   const getParam = <T extends keyof AdditionalParams>(
-//     key: T, 
-//     defaultValue: AdditionalParams[T]
-//   ): AdditionalParams[T] => {
-//     return localParams[key] !== undefined ? localParams[key] : defaultValue;
-//   };
-
-  // Temperature and related values
-//   const temperature = getParam('temperature', 0.7) as number;
-  
   // Render settings for Question Answering
   const renderQuestionAnsweringSettings = useCallback(() => {
     const params = localParams as QuestionAnsweringParams;

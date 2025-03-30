@@ -15,10 +15,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 // import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
+import { useRAGStore } from '@/store/ragStore';
+import { StudyGuideResponse, StudyGuideSummary } from '@/types/study-guide.types';
 
 export function CreateStudyGuide() {
   const router = useRouter();
-  const { createGuide } = useStudyGuideStore();
+  // const { createGuide } = useStudyGuideStore();
   const { courses } = useCourseStore();
   
   const [currentStep, setCurrentStep] = useState<number>(0);
@@ -52,22 +54,74 @@ export function CreateStudyGuide() {
     }
   };
 
-  // Submit handler
   const handleSubmit = async () => {
     try {
       setIsSubmitting(true);
       
-      await createGuide(
-        formData.topic,
-        formData.courseId,
-        formData.detailLevel,
-        formData.format,
-        formData.includePracticeQuestions,
-        formData.moduleId || undefined
-      );
+      // Create the study guide request object based on form data
+      const studyGuideRequest = {
+        topic: formData.topic,
+        moduleId: formData.moduleId || undefined,
+        detailLevel: formData.detailLevel,
+        format: formData.format,
+        courseId: formData.courseId,
+        additionalParams: {
+          courseName: courses.find(c => c.id === formData.courseId)?.name || '',
+        }
+      };
       
-      // Navigate to the guides page or specific guide
-      router.push('/study-guides');
+      // Import and use the RAG store
+      const { generateStudyGuide } = useRAGStore.getState();
+      
+      // Generate the study guide using the RAG service
+      const response = await generateStudyGuide(studyGuideRequest);
+      
+      // Access potential ID fields in a type-safe way
+      const guideId = typeof response.meta?.id === 'string' 
+        ? response.meta.id 
+        : typeof response.meta?.document_id === 'string'
+          ? response.meta.document_id
+          : typeof response.meta?.studyGuideId === 'string'
+            ? response.meta.studyGuideId
+            : undefined;
+      
+      if (guideId) {
+        // Get the studyGuideStore to update state
+        const studyGuideStore = useStudyGuideStore.getState();
+        
+        // Create a new StudyGuideSummary object
+        const newGuide: StudyGuideSummary = {
+          id: guideId,
+          topic: formData.topic,
+          courseId: formData.courseId,
+          moduleId: formData.moduleId,
+          createdAt: Date.now(),
+          format: formData.format,
+          detailLevel: formData.detailLevel
+        };
+        
+        const studyGuideResponse: StudyGuideResponse = {
+          ...response,
+          queryId: guideId,
+          query: formData.topic,
+          promptType: 'study_guide',
+          timestamp: new Date().toISOString()
+        };
+        
+        studyGuideStore.setCurrentStudyGuide(studyGuideResponse);
+        
+        useStudyGuideStore.setState({
+          studyGuides: [newGuide, ...studyGuideStore.studyGuides],
+          filteredGuides: [newGuide, ...studyGuideStore.filteredGuides]
+        });
+        
+        // Navigate to the specific guide page
+        router.push(`/study-guides/${guideId}`);
+      } else {
+        // Fallback to the main study guides page
+        console.warn('No guide ID found in response, redirecting to main page');
+        router.push('/study-guides');
+      }
       
     } catch (error) {
       console.error('Error creating study guide:', error);

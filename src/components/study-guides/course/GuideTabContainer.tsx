@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { StudyGuide, TabView, ViewMode } from '@/types/study-guide';
+import { StudyGuide, TabView, ViewMode } from '@/types/study-guide.types';
 import { GuideGrid } from '../guides/GuideGrid';
 import { GuideList } from '../guides/GuideList';
 import { EmptyTabState } from '../tabs/EmptyTabState';
@@ -12,7 +12,7 @@ import { Course } from '@/types/course.types';
 interface GuideTabContainerProps {
   guides: StudyGuide[];
   courses: Course[];
-  onCourseSelect: (courseId: string) => void;
+  onCourseSelect: (id: string) => void;
   viewMode: ViewMode;
 }
 

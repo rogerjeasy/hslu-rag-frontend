@@ -55,8 +55,8 @@ export function StudyGuidesMain() {
   }, [hasChecked, isAuthenticated, router]);
 
   // Handle course selection
-  const handleCourseSelect = (courseId: string) => {
-    router.push(`/study-guides/${courseId}`);
+  const handleCourseSelect = (guidId: string) => {
+    router.push(`/study-guides/${guidId}`);
   };
 
   const handleRefresh = async () => {
@@ -69,23 +69,6 @@ export function StudyGuidesMain() {
   const toggleMobileFilters = () => {
     setIsMobileFilterVisible(!isMobileFilterVisible);
   };
-
-  // Show loading state while checking authentication
-  // if (!hasChecked || !isAuthenticated || !user) {
-  //   return (
-  //     <div className="flex flex-col items-center justify-center min-h-[70vh] w-full p-4">
-  //       <div className="relative">
-  //         <BookOpen className="h-12 w-12 text-primary/30 absolute animate-ping opacity-75" />
-  //         <BookOpen className="h-12 w-12 text-primary relative" />
-  //       </div>
-  //       <h3 className="mt-6 text-xl font-semibold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
-  //         Study Guides
-  //       </h3>
-  //       <LoadingSpinner size="lg" className="text-primary mt-6" />
-  //       <p className="mt-4 text-muted-foreground animate-pulse">Verifying your session...</p>
-  //     </div>
-  //   );
-  // }
 
   // Loading skeleton for the content
   const renderSkeletons = () => (

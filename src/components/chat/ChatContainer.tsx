@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useConversationStore } from '@/store/conversationStore';
+import { useEnhancedConversationStore } from '@/store/enhancedConversationStore';
+import { useRAGStore } from '@/store/ragStore';
 import { Button } from '@/components/ui/button';
 import { 
   ArrowLeft,
@@ -20,7 +22,7 @@ import ChatHistorySidebar from './ChatHistorySidebar';
 import SubjectSelector from './SubjectSelector';
 import ChatSettings from './ChatSettings';
 import ChatMainLayout from './ChatMainLayout';
-import { QueryType, AdditionalParams } from '@/types/query';
+import { QueryType } from '@/types/extended-conversation.types';
 import { 
   Sheet, 
   SheetContent, 
@@ -32,6 +34,20 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
+// Define additional parameters interface
+interface AdditionalParams {
+  [key: string]: unknown;
+  
+  // Study guide params
+  detailLevel?: 'basic' | 'medium' | 'comprehensive';
+  format?: 'outline' | 'notes' | 'flashcards' | 'mind_map' | 'summary';
+  
+  // Practice questions params
+  questionCount?: number;
+  difficulty?: 'basic' | 'medium' | 'advanced';
+  questionTypes?: string[];
+}
 
 const ChatContainer: React.FC = () => {
   const params = useParams();
@@ -62,11 +78,30 @@ const ChatContainer: React.FC = () => {
   // Conversation store
   const { 
     currentConversation,
-    getConversation,
+    fetchConversation,
     createConversation,
-    sendMessage,
-    clearCurrentConversation
+    addMessage,
+    isLoading: storeLoading,
+    // error,
+    setCurrentConversation
   } = useConversationStore();
+
+  // RAG store for processing queries
+  const {
+    processQueryWithConversation,
+    isLoading: ragLoading,
+    generateStudyGuideWithConversation,
+    generatePracticeQuestionsWithConversation,
+    analyzeKnowledgeGapsWithConversation
+  } = useRAGStore();
+
+  // Enhanced store for UI operations
+  const { setSelectedCourse: setStoreCourse } = useEnhancedConversationStore();
+
+  // Sync selected course with store
+  useEffect(() => {
+    setStoreCourse(selectedCourse);
+  }, [selectedCourse, setStoreCourse]);
 
   // Setup media query
   useEffect(() => {
@@ -85,13 +120,13 @@ const ChatContainer: React.FC = () => {
     
     if (currentRouteRef.current?.startsWith('/chat/') && currentRoute === '/chat') {
       // Make sure to reset conversation state completely
-      clearCurrentConversation();
+      setCurrentConversation(null);
       lastMessageCountRef.current = 0;
     }
     
     // Update current route reference
     currentRouteRef.current = currentRoute;
-  }, [params, clearCurrentConversation]);
+  }, [params, setCurrentConversation]);
 
   // Handle conversation ID from URL
   useEffect(() => {
@@ -101,17 +136,17 @@ const ChatContainer: React.FC = () => {
     
     // If we're on the base /chat route, ensure conversation is cleared
     if (!conversationId) {
-      clearCurrentConversation();
+      setCurrentConversation(null);
       lastMessageCountRef.current = 0;
       return;
     }
     
     // Only fetch if we don't already have this conversation loaded
     if (conversationId && (!currentConversation || currentConversation.id !== conversationId)) {
-      const fetchConversation = async () => {
+      const loadConversation = async () => {
         try {
           setIsLoading(true);
-          await getConversation(conversationId);
+          await fetchConversation(conversationId);
           // Reset auto-scroll state for new conversation
           setShouldAutoScroll(true);
           userScrolledRef.current = false;
@@ -127,9 +162,9 @@ const ChatContainer: React.FC = () => {
         }
       };
       
-      fetchConversation();
+      loadConversation();
     }
-  }, [params, currentConversation, getConversation, clearCurrentConversation, toast]);
+  }, [params, currentConversation, fetchConversation, setCurrentConversation, toast]);
 
   // Smart auto-scroll handler for new messages
   useEffect(() => {
@@ -202,6 +237,73 @@ const ChatContainer: React.FC = () => {
     }
   }, []);
 
+  // Process message based on query type
+const processMessage = async (conversationId: string, content: string) => {
+  try {
+    switch (queryType) {
+      case QueryType.QUESTION_ANSWERING:
+        await processQueryWithConversation(
+          {
+            query: content,
+            courseId: selectedCourse || undefined,
+            promptType: 'question_answering',
+            additionalParams: {}
+          },
+          conversationId
+        );
+        break;
+      
+      case QueryType.STUDY_GUIDE:
+        await generateStudyGuideWithConversation(
+          {
+            topic: content,
+            courseId: selectedCourse || undefined,
+            detailLevel: additionalParams.detailLevel || 'medium',
+            format: additionalParams.format || 'outline'
+          },
+          conversationId
+        );
+        break;
+      
+      case QueryType.PRACTICE_QUESTIONS:
+        await generatePracticeQuestionsWithConversation(
+          {
+            topic: content,
+            courseId: selectedCourse || undefined,
+            questionCount: additionalParams.questionCount || 5,
+            difficulty: additionalParams.difficulty || 'medium',
+            questionTypes: additionalParams.questionTypes || ['multiple_choice', 'short_answer']
+          },
+          conversationId
+        );
+        break;
+      
+      case QueryType.KNOWLEDGE_GAP:
+        await analyzeKnowledgeGapsWithConversation(
+          {
+            query: content,
+            courseId: selectedCourse || undefined,
+            promptType: 'knowledge_gap'
+          },
+          conversationId
+        );
+        break;
+        
+      default:
+        // Default to regular question answering
+        await processQueryWithConversation(
+          {
+            query: content,
+            courseId: selectedCourse || undefined
+          },
+          conversationId
+        );
+    }
+  } catch (error) {
+    throw error;
+  }
+};
+
   // Handlers
   const handleSendMessage = async (content: string, attachments?: File[]) => {
     if (!content.trim() && (!attachments || attachments.length === 0)) return;
@@ -213,15 +315,34 @@ const ChatContainer: React.FC = () => {
     if (!currentConversation) {
       try {
         setIsLoading(true);
+        
+        // Create metadata for tracking queryType
+        const meta = {
+          queryType: queryType,
+          ...(Object.keys(additionalParams).length > 0 ? { additionalParams } : {})
+        };
+        
+        // Create a new conversation
         const newConversation = await createConversation({
           title: content.slice(0, 30) + (content.length > 30 ? '...' : ''),
-          courseId: selectedCourse || '',
-          initialMessage: content
+          courseId: selectedCourse || undefined,
+          meta
         });
         
         if (newConversation.id) {
-          // Update the message count ref with the initial message
-          lastMessageCountRef.current = 1; // Initial message
+          // Add the initial user message
+          await addMessage(newConversation.id, {
+            content,
+            role: 'user'
+          });
+          
+          // Process the message based on query type
+          await processMessage(newConversation.id, content);
+          
+          // Update the message count ref with the initial message + response
+          lastMessageCountRef.current = 2; // User message + AI response
+          
+          // Navigate to the new conversation
           router.push(`/chat/${newConversation.id}`);
         }
       } catch (error) {
@@ -239,12 +360,15 @@ const ChatContainer: React.FC = () => {
 
     try {
       setIsLoading(true);
-      await sendMessage(
-        currentConversation.id,
+      
+      // Add the user message
+      await addMessage(currentConversation.id, {
         content,
-        queryType,
-        additionalParams
-      );
+        role: 'user'
+      });
+      
+      // Process the message based on query type
+      await processMessage(currentConversation.id, content);
     } catch (error) {
       toast({
         title: "Error",
@@ -258,7 +382,7 @@ const ChatContainer: React.FC = () => {
   };
 
   const handleNewChat = () => {
-    clearCurrentConversation(); 
+    setCurrentConversation(null); 
     
     lastMessageCountRef.current = 0;
     setShowScrollButton(false);
@@ -303,6 +427,9 @@ const ChatContainer: React.FC = () => {
         return <Search className="h-5 w-5 text-blue-500" />;
     }
   };
+
+  // Combine loading states
+  const isLoadingState = isLoading || storeLoading || ragLoading;
 
   return (
     <div className="flex h-full w-full bg-slate-50 dark:bg-slate-900">
@@ -424,7 +551,7 @@ const ChatContainer: React.FC = () => {
             <ChatMainLayout maxWidth="2xl">
               <ChatMessageList 
                 messages={currentConversation.messages} 
-                isLoading={isLoading}
+                isLoading={isLoadingState}
               />
             
               {/* Scroll to bottom button - only shows when needed */}
@@ -459,7 +586,7 @@ const ChatContainer: React.FC = () => {
           <ChatMainLayout maxWidth="2xl">
             <ChatInput 
               onSendMessage={handleSendMessage} 
-              isLoading={isLoading}
+              isLoading={isLoadingState}
               disabled={!selectedCourse && !currentConversation}
               placeholder={
                 !selectedCourse && !currentConversation 

@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Message } from '@/types/conversation';
+import { Message } from '@/types/conversation.types';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import ChatMessage from './ChatMessage';
@@ -11,9 +11,9 @@ interface ChatMessageListProps {
   isLoading: boolean;
 }
 
-const ChatMessageList: React.FC<ChatMessageListProps> = ({ 
-  messages, 
-  isLoading 
+const ChatMessageList: React.FC<ChatMessageListProps> = ({
+  messages,
+  isLoading
 }) => {
   return (
     <div className="space-y-6 max-w-3xl mx-auto py-4">
@@ -23,15 +23,15 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
             key={message.id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ 
-              duration: 0.3, 
-              delay: Math.min(index * 0.05, 0.3) 
+            transition={{
+              duration: 0.3,
+              delay: Math.min(index * 0.05, 0.3)
             }}
           >
             <ChatMessage message={message} />
           </motion.div>
         ))}
-        
+       
         {isLoading && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -45,7 +45,7 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
           </motion.div>
         )}
       </AnimatePresence>
-      
+     
       {messages.length === 0 && !isLoading && (
         <div className="text-center text-slate-500 dark:text-slate-400 py-12">
           <p>No messages yet. Start a conversation by typing a message below.</p>

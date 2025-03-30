@@ -46,7 +46,7 @@ export const CourseContainer = ({
     <div className="pt-8 pb-4 w-full">
       <h2 className="text-xl font-semibold text-gray-800 mb-5 flex items-center">
         <GraduationCap className="h-5 w-5 mr-2 text-primary" />
-        Your Courses
+        Current Available Courses
       </h2>
       <motion.div 
         variants={container}

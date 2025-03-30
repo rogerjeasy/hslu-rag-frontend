@@ -30,13 +30,13 @@ import { Course } from "@/types/course.types"
 const courseFormSchema = z.object({
   code: z.string()
     .min(2, { message: "Course code must be at least 2 characters." })
-    .max(10, { message: "Course code must not exceed 10 characters." }),
+    .max(30, { message: "Course code must not exceed 30 characters." }),
   name: z.string()
     .min(5, { message: "Course name must be at least 5 characters." })
     .max(100, { message: "Course name must not exceed 100 characters." }),
   description: z.string()
     .min(10, { message: "Description must be at least 10 characters." })
-    .max(500, { message: "Description must not exceed 500 characters." }),
+    .max(5000, { message: "Description must not exceed 5000 characters." }),
   semester: z.string({
     required_error: "Please select a semester.",
   }),

@@ -106,7 +106,7 @@ export const CourseCard = ({
           onClick={onSelect} 
           className="w-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-200"
         >
-          <span>View Study Guides</span>
+          <span>View Course Details</span>
           <ArrowRight className="ml-2 h-4 w-4 shrink-0" />
         </Button>
       </CardFooter>

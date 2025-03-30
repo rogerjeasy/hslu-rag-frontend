@@ -4,9 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useConversationStore } from '@/store/conversationStore';
+import { useEnhancedConversationStore } from '@/store/enhancedConversationStore';
 import { useRouter, usePathname } from 'next/navigation';
-import { ExtendedConversationSummary } from '@/types/conversation';
-import { QueryType } from '@/types/query';
+import { ExtendedConversationSummary, QueryType } from '@/types/extended-conversation.types';
 import SubjectSelector from './SubjectSelector';
 import { Plus, Search, MessageSquare, Trash2, Pin, BookOpen, PenSquare, Loader2, MoreVertical } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -33,33 +33,40 @@ const ChatHistorySidebar: React.FC<ChatHistorySidebarProps> = ({
 }) => {
   const router = useRouter();
   const pathname = usePathname();
-  const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('all');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isClient, setIsClient] = useState(false);
   
+  // Base conversation store for data operations
   const {
-    // conversations,
-    filteredConversations,
     fetchConversations,
-    setSearchTerm: setStoreSearchTerm,
-    setSelectedCourse: setStoreSelectedCourse,
     deleteConversation,
-    updateConversation,
+    isLoading,
+    error,
   } = useConversationStore();
+  
+  // Enhanced store for UI operations
+  const {
+    searchTerm,
+    setSearchTerm,
+    setSelectedCourse,
+    togglePinConversation,
+    filteredConversations
+  } = useEnhancedConversationStore();
 
+  // Set client-side rendering flag
   useEffect(() => {
-    setIsLoading(true);
-    fetchConversations(selectedCourse || undefined)
-      .finally(() => setIsLoading(false));
-  }, [fetchConversations, selectedCourse]);
+    setIsClient(true);
+  }, []);
 
+  // Sync with parent component's selected course
   useEffect(() => {
-    setStoreSearchTerm(searchTerm);
-  }, [searchTerm, setStoreSearchTerm]);
+    setSelectedCourse(selectedCourse);
+  }, [selectedCourse, setSelectedCourse]);
 
+  // Fetch conversations when component mounts
   useEffect(() => {
-    setStoreSelectedCourse(selectedCourse);
-  }, [selectedCourse, setStoreSelectedCourse]);
+    fetchConversations();
+  }, [fetchConversations]);
 
   const handleNewChat = () => {
     router.push('/chat');
@@ -82,13 +89,8 @@ const ChatHistorySidebar: React.FC<ChatHistorySidebarProps> = ({
 
   const handleTogglePin = async (e: React.MouseEvent, conversation: ExtendedConversationSummary) => {
     e.stopPropagation();
-    await updateConversation(conversation.id, {
-      pinned: !conversation.pinned,
-    });
+    await togglePinConversation(conversation.id);
   };
-
-  // Type assertion to treat filteredConversations as ExtendedConversationSummary[]
-  const extendedConversations = filteredConversations as ExtendedConversationSummary[];
 
   const filterConversationsByTab = (conversations: ExtendedConversationSummary[]) => {
     switch (activeTab) {
@@ -110,47 +112,60 @@ const ChatHistorySidebar: React.FC<ChatHistorySidebarProps> = ({
     }
   };
 
-  const filteredByTab = filterConversationsByTab(extendedConversations);
+  // Memoize "today" to ensure consistent rendering between server and client
+  const today = React.useMemo(() => new Date().toDateString(), []);
+
+  const filteredByTab = isClient ? filterConversationsByTab(filteredConversations) : [];
 
   // Format the date to display
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+  const formatDate = (timestamp: number) => {
+    if (!isClient) return '';
+    
+    const date = new Date(timestamp * 1000); // Convert timestamp to milliseconds
     const now = new Date();
     
     // If today, show time
     if (date.toDateString() === now.toDateString()) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
     }
     
     // If this year, show month and day
     if (date.getFullYear() === now.getFullYear()) {
-      return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     }
     
     // Otherwise show full date
-    return date.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' });
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
   // Group conversations by date
-  const groupedConversations = filteredByTab.reduce<Record<string, ExtendedConversationSummary[]>>(
-    (groups, conversation) => {
-      const date = new Date(conversation.updatedAt);
-      const dateStr = date.toDateString();
-      
-      if (!groups[dateStr]) {
-        groups[dateStr] = [];
-      }
-      
-      groups[dateStr].push(conversation);
-      return groups;
-    },
-    {}
-  );
+  const groupedConversations = React.useMemo(() => {
+    if (!isClient) return {};
+    
+    return filteredByTab.reduce<Record<string, ExtendedConversationSummary[]>>(
+      (groups, conversation) => {
+        const date = new Date(conversation.updatedAt * 1000); // Convert timestamp to milliseconds
+        const dateStr = date.toDateString();
+        
+        if (!groups[dateStr]) {
+          groups[dateStr] = [];
+        }
+        
+        groups[dateStr].push(conversation);
+        return groups;
+      },
+      {}
+    );
+  }, [filteredByTab, isClient]);
 
   // Sort dates newest first
-  const sortedDates = Object.keys(groupedConversations).sort(
-    (a, b) => new Date(b).getTime() - new Date(a).getTime()
-  );
+  const sortedDates = React.useMemo(() => {
+    if (!isClient) return [];
+    
+    return Object.keys(groupedConversations).sort(
+      (a, b) => new Date(b).getTime() - new Date(a).getTime()
+    );
+  }, [groupedConversations, isClient]);
 
   // Function to render the appropriate icon based on query type
   const renderQueryTypeIcon = (queryType?: QueryType) => {
@@ -257,7 +272,11 @@ const ChatHistorySidebar: React.FC<ChatHistorySidebarProps> = ({
   // Render content for a specific tab
   const renderTabContent = (tabValue: string) => (
     <TabsContent value={tabValue} className="mt-2 p-0 overflow-hidden">
-      {isLoading ? (
+      {!isClient ? (
+        <div className="p-4 flex justify-center items-center">
+          <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+        </div>
+      ) : isLoading ? (
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -266,6 +285,15 @@ const ChatHistorySidebar: React.FC<ChatHistorySidebarProps> = ({
         >
           <Loader2 className="h-8 w-8 animate-spin mb-2 text-blue-500" />
           <p className="text-sm">Loading conversations...</p>
+        </motion.div>
+      ) : error ? (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
+          className="p-4 text-center text-red-500 bg-red-100/50 dark:bg-red-900/20 rounded-lg"
+        >
+          Error loading conversations: {error}
         </motion.div>
       ) : filteredByTab.length === 0 ? (
         <motion.div 
@@ -285,16 +313,16 @@ const ChatHistorySidebar: React.FC<ChatHistorySidebarProps> = ({
           {sortedDates.map(dateStr => (
             <div key={dateStr} className="mb-2">
               <div className="px-3 py-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 sticky top-0 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-sm z-10 rounded-md">
-                {new Date(dateStr).toDateString() === new Date().toDateString()
+                {dateStr === today
                   ? 'Today'
-                  : new Date(dateStr).toLocaleDateString([], {
+                  : new Date(dateStr).toLocaleDateString('en-US', {
                       weekday: 'long',
                       month: 'long',
                       day: 'numeric'
                     })}
               </div>
               
-              {groupedConversations[dateStr].map(renderConversationItem)}
+              {groupedConversations[dateStr]?.map(renderConversationItem)}
               <Separator className="my-2 opacity-30" />
             </div>
           ))}
@@ -303,6 +331,7 @@ const ChatHistorySidebar: React.FC<ChatHistorySidebarProps> = ({
     </TabsContent>
   );
 
+  // Render initial loading state or full component
   return (
     <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 overflow-hidden">
       <div className="p-4 border-b border-slate-200 dark:border-slate-800">
