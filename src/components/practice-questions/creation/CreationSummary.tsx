@@ -1,8 +1,9 @@
 import React from 'react';
-import { DifficultyLevel, QuestionType } from '@/types/practice-questions';
+import { DifficultyLevel, QuestionTypeEnum } from '@/types/practice-questions.types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Check } from 'lucide-react';
+import { Check, BookOpen, BarChart3, ListChecks, User, GraduationCap } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface CreationSummaryProps {
   topic: string;
@@ -14,31 +15,65 @@ interface CreationSummaryProps {
   }[];
   questionCount: number;
   difficulty: DifficultyLevel;
-  selectedTypes: QuestionType[];
+  selectedTypes: QuestionTypeEnum[];
 }
 
-// Map question types to human-readable labels
-const questionTypeLabels: Record<QuestionType, string> = {
-  [QuestionType.MULTIPLE_CHOICE]: 'Multiple Choice',
-  [QuestionType.SHORT_ANSWER]: 'Short Answer',
-  [QuestionType.TRUE_FALSE]: 'True/False',
-  [QuestionType.FILL_IN_BLANK]: 'Fill in the Blank',
-  [QuestionType.MATCHING]: 'Matching',
+// Map question types to human-readable labels and icons
+const questionTypeInfo: Record<QuestionTypeEnum, { label: string, icon: React.ReactNode }> = {
+  [QuestionTypeEnum.MULTIPLE_CHOICE]: {
+    label: 'Multiple Choice',
+    icon: <ListChecks className="h-3 w-3" />
+  },
+  [QuestionTypeEnum.SHORT_ANSWER]: {
+    label: 'Short Answer',
+    icon: <User className="h-3 w-3" />
+  },
+  [QuestionTypeEnum.TRUE_FALSE]: {
+    label: 'True/False',
+    icon: <Check className="h-3 w-3" />
+  },
+  [QuestionTypeEnum.FILL_IN_BLANK]: {
+    label: 'Fill in the Blank',
+    icon: <User className="h-3 w-3" />
+  },
+  [QuestionTypeEnum.MATCHING]: {
+    label: 'Matching',
+    icon: <ListChecks className="h-3 w-3" />
+  },
 };
 
-// Map difficulty levels to badges
-const difficultyBadges: Record<DifficultyLevel, { color: string, label: string }> = {
+// Map difficulty levels to styling and content
+const difficultyInfo: Record<DifficultyLevel, { 
+  color: string, 
+  bgColor: string,
+  borderColor: string,
+  icon: React.ReactNode,
+  label: string,
+  description: string
+}> = {
   [DifficultyLevel.BASIC]: {
-    color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-    label: 'Basic'
+    color: 'text-green-700 dark:text-green-400',
+    bgColor: 'bg-green-50 dark:bg-green-950/30',
+    borderColor: 'border-green-200 dark:border-green-900',
+    icon: <GraduationCap className="h-4 w-4 text-green-600 dark:text-green-400" />,
+    label: 'Basic',
+    description: 'Fundamental concepts and simple recall questions'
   },
   [DifficultyLevel.MEDIUM]: {
-    color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-    label: 'Medium'
+    color: 'text-blue-700 dark:text-blue-400',
+    bgColor: 'bg-blue-50 dark:bg-blue-950/30',
+    borderColor: 'border-blue-200 dark:border-blue-900',
+    icon: <GraduationCap className="h-4 w-4 text-blue-600 dark:text-blue-400" />,
+    label: 'Medium',
+    description: 'Application of concepts and moderate complexity'
   },
   [DifficultyLevel.ADVANCED]: {
-    color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
-    label: 'Advanced'
+    color: 'text-purple-700 dark:text-purple-400',
+    bgColor: 'bg-purple-50 dark:bg-purple-950/30',
+    borderColor: 'border-purple-200 dark:border-purple-900',
+    icon: <GraduationCap className="h-4 w-4 text-purple-600 dark:text-purple-400" />,
+    label: 'Advanced',
+    description: 'Complex problem-solving and deeper understanding'
   }
 };
 
@@ -56,72 +91,125 @@ const CreationSummary: React.FC<CreationSummaryProps> = ({
   // Check if we have enough info to show a meaningful summary
   const hasBasicInfo = !!topic && !!courseId;
   
+  // Get difficulty info
+  const difficultyData = difficultyInfo[difficulty];
+
   return (
-    <Card className="border-dashed">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-lg flex items-center justify-between">
-          <span>Summary</span>
-          {hasBasicInfo && (
-            <Badge variant="outline" className="font-normal">
-              Ready to Create
-            </Badge>
-          )}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {hasBasicInfo ? (
-          <div className="space-y-4">
-            <div className="space-y-1">
-              <h4 className="text-sm font-medium text-muted-foreground">Topic</h4>
-              <p className="font-medium">{topic}</p>
-            </div>
+    <div className="space-y-6">
+      <Card className="border shadow-sm overflow-hidden">
+        <div className="flex flex-col sm:flex-row">
+          <div className="p-6 sm:w-1/3 bg-muted/20">
+            <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+              <BookOpen className="h-5 w-5 text-primary" />
+              Practice Session
+            </h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-1">
-                <h4 className="text-sm font-medium text-muted-foreground">Course</h4>
-                <div className="flex items-center gap-2">
-                  {selectedCourse && (
-                    <div
-                      className="h-2 w-2 rounded-full"
-                      style={{ backgroundColor: selectedCourse.color }}
-                    />
-                  )}
-                  <span>{selectedCourse?.name || 'None selected'}</span>
+            {hasBasicInfo ? (
+              <div className="space-y-5">
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Topic</h4>
+                  <p className="text-xl font-medium truncate" title={topic}>{topic}</p>
+                </div>
+                
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Course</h4>
+                  <div className="flex items-center gap-2">
+                    {selectedCourse && (
+                      <div
+                        className="h-3 w-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: selectedCourse.color }}
+                      />
+                    )}
+                    <p className="font-medium truncate" title={selectedCourse?.name}>
+                      {selectedCourse?.name || 'None selected'}
+                    </p>
+                  </div>
                 </div>
               </div>
-              
-              <div className="space-y-1">
-                <h4 className="text-sm font-medium text-muted-foreground">Difficulty</h4>
-                <Badge variant="secondary" className={difficultyBadges[difficulty].color}>
-                  {difficultyBadges[difficulty].label}
+            ) : (
+              <div className="py-4 text-muted-foreground">
+                <p>Please provide a topic and select a course to see a summary.</p>
+              </div>
+            )}
+          </div>
+          
+          {hasBasicInfo && (
+            <div className="p-6 sm:w-2/3 border-t sm:border-t-0 sm:border-l">
+              <div className="flex items-start justify-between mb-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                  Configuration
+                </h3>
+                <Badge variant="outline" className="font-normal">
+                  Ready to Create
                 </Badge>
               </div>
               
-              <div className="space-y-1">
-                <h4 className="text-sm font-medium text-muted-foreground">Questions</h4>
-                <p>{questionCount} questions</p>
+              <div className="space-y-6">
+                {/* Difficulty card */}
+                <div className={cn(
+                  "p-4 rounded-lg border",
+                  difficultyData.borderColor,
+                  difficultyData.bgColor
+                )}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      {difficultyData.icon}
+                      <h4 className={cn("font-medium", difficultyData.color)}>
+                        {difficultyData.label} Difficulty
+                      </h4>
+                    </div>
+                    <Badge variant="outline" className={cn(
+                      "font-medium", 
+                      difficultyData.color,
+                      difficultyData.borderColor
+                    )}>
+                      {questionCount} Questions
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {difficultyData.description}
+                  </p>
+                </div>
+                
+                {/* Question types */}
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-2">
+                    Question Types ({selectedTypes.length})
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedTypes.map(type => (
+                      <Badge 
+                        key={type} 
+                        variant="secondary"
+                        className="flex items-center px-3 py-1.5 text-xs font-medium"
+                      >
+                        {questionTypeInfo[type].icon}
+                        <span className="ml-1.5">{questionTypeInfo[type].label}</span>
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
-            
-            <div className="space-y-1">
-              <h4 className="text-sm font-medium text-muted-foreground">Question Types</h4>
-              <div className="flex flex-wrap gap-2">
-                {selectedTypes.map(type => (
-                  <Badge key={type} variant="secondary">
-                    <Check className="mr-1 h-3 w-3" />
-                    {questionTypeLabels[type]}
-                  </Badge>
-                ))}
-              </div>
+          )}
+        </div>
+      </Card>
+      
+      {hasBasicInfo && (
+        <div className="bg-muted/20 rounded-lg p-4 border border-dashed flex flex-col sm:flex-row items-center justify-between text-sm">
+          <div className="flex items-center gap-2 mb-3 sm:mb-0">
+            <div className="bg-primary/10 text-primary p-1.5 rounded-full">
+              <Check className="h-4 w-4" />
             </div>
+            <span>Your practice questions are tailored to your selected course materials</span>
           </div>
-        ) : (
-          <div className="py-6 text-center text-muted-foreground">
-            <p>Please provide a topic and select a course to see a summary of your practice questions.</p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          <Badge variant="secondary" className="whitespace-nowrap">
+            {selectedTypes.length} types &middot; {questionCount} questions
+          </Badge>
+        </div>
+      )}
+    </div>
   );
 };
 

@@ -7,16 +7,11 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import { MatchingQuestion } from '@/types/practice-questions';
+import { MatchingQuestionType } from '@/types/practice-questions.types';
 import { CheckCircle2, XCircle, ArrowRight } from 'lucide-react';
-// import { Separator } from '@/components/ui/separator';
-// import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core';
-// import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
-// import { CSS } from '@dnd-kit/utilities';
-// import { Button } from '@/components/ui/button';
 
 interface MatchingQuestionViewProps {
-  question: MatchingQuestion;
+  question: MatchingQuestionType;
   userAnswer: Record<string, string> | undefined;
   setUserAnswer: (value: Record<string, string>) => void;
   showResults?: boolean;
@@ -44,10 +39,10 @@ export function MatchingQuestionView({
     });
   };
 
-  // Get all right options for select dropdowns
-  const rightOptions = question.items.map(item => ({
-    id: item.id,
-    text: item.rightText
+  // Get all right options for select dropdowns - adapting to use the `pairs` property from MatchingQuestionType
+  const rightOptions = question.pairs.map((pair, index) => ({
+    id: index.toString(), // Generate an ID since pairs might not have unique IDs
+    text: pair.right
   }));
 
   // Shuffle the right options to make it more challenging
@@ -61,12 +56,12 @@ export function MatchingQuestionView({
         {/* Left Column - Fixed items */}
         <div className="space-y-4">
           <div className="font-medium text-center pb-2 border-b">Items</div>
-          {question.items.map((item) => (
+          {question.pairs.map((pair, index) => (
             <div 
-              key={item.id} 
+              key={`left-${index}`} 
               className="p-3 rounded-md border bg-muted/30"
             >
-              {item.leftText}
+              {pair.left}
             </div>
           ))}
         </div>
@@ -74,15 +69,15 @@ export function MatchingQuestionView({
         {/* Right Column - Matching items */}
         <div className="space-y-4">
           <div className="font-medium text-center pb-2 border-b">Matches</div>
-          {question.items.map((item) => {
-            const leftId = item.id;
+          {question.pairs.map((pair, index) => {
+            const leftId = pair.left; // Using left text as the key
             const selectedRightId = userAnswer[leftId];
-            const isCorrect = showResults && selectedRightId === leftId;
-            const isIncorrect = showResults && selectedRightId && selectedRightId !== leftId;
+            const isCorrect = showResults && selectedRightId === pair.right;
+            const isIncorrect = showResults && selectedRightId && selectedRightId !== pair.right;
             
             return (
               <div 
-                key={`match-${item.id}`}
+                key={`match-${index}`}
                 className={`p-3 rounded-md border ${
                   isCorrect 
                     ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800'
@@ -102,7 +97,7 @@ export function MatchingQuestionView({
                     </SelectTrigger>
                     <SelectContent>
                       {shuffledRightOptions.map((option) => (
-                        <SelectItem key={option.id} value={option.id}>
+                        <SelectItem key={option.id} value={option.text}>
                           {option.text}
                         </SelectItem>
                       ))}
@@ -129,11 +124,11 @@ export function MatchingQuestionView({
         <div className="p-4 rounded-md bg-muted mt-4">
           <h4 className="font-medium mb-2">Correct Matches:</h4>
           <div className="space-y-3 mt-3">
-            {question.items.map((item) => (
-              <div key={`answer-${item.id}`} className="flex items-center">
-                <div className="flex-1">{item.leftText}</div>
+            {question.pairs.map((pair, index) => (
+              <div key={`answer-${index}`} className="flex items-center">
+                <div className="flex-1">{pair.left}</div>
                 <ArrowRight className="mx-2 h-4 w-4 text-muted-foreground" />
-                <div className="flex-1">{item.rightText}</div>
+                <div className="flex-1">{pair.right}</div>
               </div>
             ))}
           </div>

@@ -1,11 +1,11 @@
 "use client";
 import React from 'react';
 import { Input } from '@/components/ui/input';
-import { FillInBlankQuestion } from '@/types/practice-questions';
+import { FillInBlankQuestionType, QuestionResult } from '@/types/practice-questions.types';
 import { CheckCircle2, XCircle } from 'lucide-react';
 
 interface FillInBlankQuestionViewProps {
-  question: FillInBlankQuestion;
+  question: FillInBlankQuestionType;
   userAnswer: string[] | undefined;
   setUserAnswer: (value: string[]) => void;
   showResults?: boolean;
@@ -32,20 +32,20 @@ export function FillInBlankQuestionView({
     newAnswers[index] = value;
     setUserAnswer(newAnswers);
   };
-
+  
   // Split the question text into parts with blanks
   const parts = React.useMemo(() => {
     // This is a simple implementation - you might need a more sophisticated parser
     // depending on your exact format for fill-in-blank questions
     const regex = /_{3,}/g; // Match 3 or more underscores
     const textParts = question.text.split(regex);
-    
+   
     return textParts.map((part, index) => ({
       text: part,
       isBlank: index < textParts.length - 1 // All except the last part has a blank after it
     }));
   }, [question.text]);
-
+  
   return (
     <div className="space-y-4">
       <div className="text-lg">
@@ -80,7 +80,6 @@ export function FillInBlankQuestionView({
           </React.Fragment>
         ))}
       </div>
-
       {showResults && (
         <div className="p-4 rounded-md bg-muted mt-4">
           <h4 className="font-medium mb-2">Correct Answers:</h4>

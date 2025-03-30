@@ -1,7 +1,12 @@
-"use client";
-
 import { Suspense } from "react";
-import PracticeQuestionsPage from "@/components/practice-questions/PracticeQuestionsPage";
+import PracticeQuestionsHomePage from "@/components/practice-questions/PracticeQuestionsHomePage";
+import { Metadata } from 'next';
+
+
+export const metadata: Metadata = {
+  title: 'Practice Questions | Learning Platform',
+  description: 'Test your knowledge with practice questions based on your course materials',
+};
 
 // Loading component to display while content is loading
 function Loading() {
@@ -18,7 +23,7 @@ function Loading() {
 export default function PracticeQuestionsPageWrapper() {
   return (
     <Suspense fallback={<Loading />}>
-      <PracticeQuestionsPage />
+      <PracticeQuestionsHomePage />
     </Suspense>
   );
 }

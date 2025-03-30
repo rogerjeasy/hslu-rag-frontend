@@ -1,173 +1,444 @@
-// src/store/practiceQuestionsStore.ts
-import { create } from 'zustand';
-import { 
-  DeleteResponse, 
-} from '@/types/study-guide.types';
-import { practiceQuestionsService, PracticeQuestionsSummary } from '@/services/practice-questions.service';
-import { RAGResponse } from '@/types/rag.types';
+// // store/usePracticeQuestionsStore.ts
+// import { create } from 'zustand';
+// import { persist } from 'zustand/middleware';
+// import { practiceQuestionsService } from '@/services/practiceQuestionsService';
+// import { 
+//   PracticeQuestionsSetType, 
+//   UserAnswer, 
+//   PracticeSessionState, 
+//   PracticeSessionStats,
+//   QuestionType,
+//   DifficultyLevel,
+//   QuestionTypeEnum
+// } from '@/types/practice-questions.types';
 
-interface PracticeQuestionsState {
-  // Data
-  questionSets: PracticeQuestionsSummary[];
-  filteredQuestionSets: PracticeQuestionsSummary[];
-  currentQuestionSet: RAGResponse | null;
-  isLoading: boolean;
-  error: string | null;
-  
-  // Filter state
-  searchTerm: string;
-  selectedCourse: string | null;
-  selectedDifficulty: string | null;
-  
-  // Filter actions
-  setSearchTerm: (term: string) => void;
-  setSelectedCourse: (courseId: string | null) => void;
-  setSelectedDifficulty: (difficulty: string | null) => void;
-  applyFilters: () => void;
-  resetFilters: () => void;
-  
-  // Data actions
-  fetchQuestionSets: (limit?: number) => Promise<void>;
-  getQuestionSet: (id: string) => Promise<RAGResponse>;
-  deleteQuestionSet: (id: string) => Promise<DeleteResponse>;
-  resetError: () => void;
-  setCurrentQuestionSet: (questionSet: RAGResponse | null) => void;
-}
+// // Added active filters tracking
+// interface ActiveFilters {
+//   searchTerm: string;
+//   courseId?: string;
+//   difficulty?: DifficultyLevel | null;
+//   type?: QuestionTypeEnum | null;
+// }
 
-export const usePracticeQuestionsStore = create<PracticeQuestionsState>((set, get) => ({
-  // Initial state
-  questionSets: [],
-  filteredQuestionSets: [],
-  currentQuestionSet: null,
-  isLoading: false,
-  error: null,
-  searchTerm: '',
-  selectedCourse: null,
-  selectedDifficulty: null,
+// interface PracticeQuestionsState {
+//   // Question sets data
+//   questionSets: PracticeQuestionsSetType[];
+//   filteredSets: PracticeQuestionsSetType[];
+//   currentSet: PracticeQuestionsSetType | null;
+//   isLoading: boolean;
+//   isCreating: boolean;
+//   error: string | null;
   
-  // Filter setters
-  setSearchTerm: (term) => {
-    set({ searchTerm: term });
-    get().applyFilters();
-  },
+//   // Added active filters state
+//   activeFilters: ActiveFilters;
   
-  setSelectedCourse: (courseId) => {
-    set({ selectedCourse: courseId });
-    get().applyFilters();
-  },
+//   // Practice session state
+//   session: PracticeSessionState | null;
   
-  setSelectedDifficulty: (difficulty) => {
-    set({ selectedDifficulty: difficulty });
-    get().applyFilters();
-  },
+//   // Actions
+//   fetchQuestionSets: (courseId?: string) => Promise<void>;
+//   fetchQuestionSetById: (id: string) => Promise<void>;
+//   filterQuestionSets: (searchTerm: string, courseId?: string, difficulty?: DifficultyLevel | null, type?: QuestionTypeEnum | null) => void;
+//   resetFilters: () => void;
+//   clearError: () => void;
+//   createQuestionSet: (params: {
+//     topic: string;
+//     courseId: string;
+//     moduleId?: string;
+//     questionCount: number;
+//     difficulty: string;
+//     questionTypes: QuestionType[];
+//   }) => Promise<string>;
   
-  // Filter actions
-  applyFilters: () => {
-    const { questionSets, searchTerm, selectedCourse, selectedDifficulty } = get();
-    let result = [...questionSets];
-    
-    // Apply search filter
-    if (searchTerm) {
-      const lowerSearchTerm = searchTerm.toLowerCase();
-      result = result.filter(set => 
-        set.topic.toLowerCase().includes(lowerSearchTerm)
-      );
-    }
-    
-    // Apply course filter
-    if (selectedCourse) {
-      result = result.filter(set => set.courseId === selectedCourse);
-    }
-    
-    // Apply difficulty filter
-    if (selectedDifficulty) {
-      result = result.filter(set => set.difficulty === selectedDifficulty);
-    }
-    
-    set({ filteredQuestionSets: result });
-  },
-  
-  resetFilters: () => {
-    set({ 
-      searchTerm: '',
-      selectedCourse: null,
-      selectedDifficulty: null,
-      filteredQuestionSets: get().questionSets
-    });
-  },
-  
-  // Data actions
-  fetchQuestionSets: async (limit = 50) => {
-    set({ isLoading: true, error: null });
-    
-    try {
-      const questionSets = await practiceQuestionsService.getPracticeQuestionSets(limit);
-      set({ 
-        questionSets, 
-        filteredQuestionSets: questionSets, 
-        isLoading: false 
-      });
-    } catch (error) {
-      console.error('Error fetching practice question sets:', error);
-      set({ 
-        error: error instanceof Error ? error.message : 'An unknown error occurred', 
-        isLoading: false 
-      });
-    }
-  },
-  
-  getQuestionSet: async (id) => {
-    set({ isLoading: true, error: null });
-    
-    try {
-      const questionSet = await practiceQuestionsService.getPracticeQuestionSet(id);
-      set({ currentQuestionSet: questionSet, isLoading: false });
-      return questionSet;
-    } catch (error) {
-      console.error('Error fetching practice question set:', error);
-      set({ 
-        error: error instanceof Error ? error.message : 'An unknown error occurred', 
-        isLoading: false 
-      });
-      throw error;
-    }
-  },
-  
-  deleteQuestionSet: async (id) => {
-    set({ isLoading: true, error: null });
-    
-    try {
-      const response = await practiceQuestionsService.deletePracticeQuestionSet(id);
+//   // Session actions
+//   startSession: (setId: string) => void;
+//   endSession: () => void;
+//   nextQuestion: () => void;
+//   previousQuestion: () => void;
+//   jumpToQuestion: (index: number) => void;
+//   submitAnswer: (questionId: string, answer: UserAnswer['answer']) => void;
+//   resetSession: () => void;
+// }
+
+// const initialSessionStats: PracticeSessionStats = {
+//   totalQuestions: 0,
+//   answeredQuestions: 0,
+//   correctAnswers: 0,
+//   incorrectAnswers: 0,
+//   skippedQuestions: 0,
+//   completionPercentage: 0,
+//   averageTimePerQuestion: 0
+// };
+
+// const initialActiveFilters: ActiveFilters = {
+//   searchTerm: '',
+//   courseId: undefined,
+//   difficulty: null,
+//   type: null
+// };
+
+// export const usePracticeQuestionsStore = create<PracticeQuestionsState>()(
+//   persist(
+//     (set, get) => ({
+//       // State
+//       questionSets: [],
+//       filteredSets: [],
+//       currentSet: null,
+//       isLoading: false,
+//       isCreating: false,
+//       error: null,
+//       activeFilters: initialActiveFilters,
+//       session: null,
       
-      if (response.success) {
-        // Update the question sets list
-        set(state => ({
-          questionSets: state.questionSets.filter(set => set.id !== id),
-          currentQuestionSet: state.currentQuestionSet && 'meta' in state.currentQuestionSet && 
-            state.currentQuestionSet.meta?.document_id === id ? null : state.currentQuestionSet
-        }));
+//       // API actions
+//       fetchQuestionSets: async (courseId?: string) => {
+//         try {
+//           set({ isLoading: true, error: null });
+          
+//           // Use the correct method from the service
+//           const result = await practiceQuestionsService.fetchPracticeQuestionSets();
+          
+//           // Filter by courseId if provided
+//           const filteredResult = courseId 
+//             ? result.filter(set => set.courseId === courseId)
+//             : result;
+            
+//           // Update activeFilters if courseId is provided
+//           const activeFilters = courseId 
+//             ? { ...get().activeFilters, courseId } 
+//             : get().activeFilters;
+            
+//           set({ 
+//             questionSets: result, 
+//             filteredSets: filteredResult,
+//             activeFilters,
+//             isLoading: false 
+//           });
+//         } catch (error) {
+//           console.error('Error fetching question sets:', error);
+//           set({ 
+//             error: error instanceof Error ? error.message : 'An unknown error occurred',
+//             isLoading: false 
+//           });
+//         }
+//       },
+      
+//       fetchQuestionSetById: async (id: string) => {
+//         try {
+//           set({ isLoading: true, error: null });
+          
+//           // Check if we already have this set in state
+//           const existingSet = get().questionSets.find(set => set.id === id);
+//           if (existingSet) {
+//             set({ currentSet: existingSet, isLoading: false });
+//             return;
+//           }
+          
+//           // Use the correct method from the service
+//           const data = await practiceQuestionsService.fetchPracticeQuestionSet(id);
+//           set({ currentSet: data, isLoading: false });
+//         } catch (error) {
+//           console.error(`Error fetching question set ${id}:`, error);
+//           set({ 
+//             error: error instanceof Error ? error.message : 'An unknown error occurred',
+//             isLoading: false 
+//           });
+//         }
+//       },
+      
+//       filterQuestionSets: (searchTerm: string, courseId?: string, difficulty?: DifficultyLevel | null, type?: QuestionTypeEnum | null) => {
+//         const { questionSets, activeFilters } = get();
         
-        // Re-apply filters
-        get().applyFilters();
-      }
+//         // Skip if filters haven't changed
+//         if (
+//           activeFilters.searchTerm === searchTerm &&
+//           activeFilters.courseId === courseId &&
+//           activeFilters.difficulty === difficulty &&
+//           activeFilters.type === type
+//         ) {
+//           return;
+//         }
+        
+//         let filtered = [...questionSets];
+        
+//         // Filter by search term
+//         if (searchTerm) {
+//           const term = searchTerm.toLowerCase();
+//           filtered = filtered.filter(set => 
+//             set.topic.toLowerCase().includes(term)
+//           );
+//         }
+        
+//         // Filter by course
+//         if (courseId) {
+//           filtered = filtered.filter(set => set.courseId === courseId);
+//         }
+        
+//         // Filter by difficulty
+//         if (difficulty) {
+//           filtered = filtered.filter(set => set.difficulty === difficulty);
+//         }
+        
+//         // Filter by question type
+//         if (type) {
+//           filtered = filtered.filter(set => 
+//             set.questions && set.questions.some(q => q.type === type)
+//           );
+//         }
+        
+//         set({ 
+//           filteredSets: filtered,
+//           activeFilters: {
+//             searchTerm,
+//             courseId,
+//             difficulty,
+//             type
+//           }
+//         });
+//       },
       
-      set({ isLoading: false });
-      return response;
-    } catch (error) {
-      console.error('Error deleting practice question set:', error);
-      set({ 
-        error: error instanceof Error ? error.message : 'An unknown error occurred', 
-        isLoading: false 
-      });
-      throw error;
-    }
-  },
-  
-  resetError: () => {
-    set({ error: null });
-  },
-  
-  setCurrentQuestionSet: (questionSet) => {
-    set({ currentQuestionSet: questionSet });
-  }
-}));
+//       resetFilters: () => {
+//         set({ 
+//           filteredSets: get().questionSets,
+//           activeFilters: initialActiveFilters
+//         });
+//       },
+      
+//       clearError: () => {
+//         set({ error: null });
+//       },
+      
+//       createQuestionSet: async (params) => {
+//         set({ isCreating: true, error: null });
+        
+//         try {
+//           // Transform the params to match the service expectations
+//           const serviceParams = {
+//             topic: params.topic,
+//             courseId: params.courseId,
+//             moduleId: params.moduleId,
+//             questionCount: params.questionCount,
+//             difficulty: params.difficulty,
+//             questionTypes: params.questionTypes.map(type => type.toString())
+//           };
+          
+//           const result = await practiceQuestionsService.generatePracticeQuestions(serviceParams);
+          
+//           // Update the questionSets state with the new set
+//           set(state => ({
+//             questionSets: [...state.questionSets, result],
+//             filteredSets: [...state.filteredSets, result],
+//             currentSet: result,
+//             isCreating: false
+//           }));
+          
+//           return result.id;
+//         } catch (error) {
+//           console.error('Error creating question set:', error);
+//           set({ 
+//             error: error instanceof Error ? error.message : 'Failed to create practice questions',
+//             isCreating: false 
+//           });
+//           throw error;
+//         }
+//       },
+      
+//       // Session management
+//       startSession: (setId: string) => {
+//         // Don't create a new session if one already exists for this set
+//         if (get().session && get().currentSet?.id === setId) {
+//           return;
+//         }
+        
+//         const questionSet = get().questionSets.find(set => set.id === setId) || 
+//                           get().currentSet;
+        
+//         if (!questionSet) {
+//           set({ error: 'Question set not found' });
+//           return;
+//         }
+        
+//         const newSession: PracticeSessionState = {
+//           currentQuestionIndex: 0,
+//           userAnswers: {},
+//           startTime: Date.now(),
+//           stats: {
+//             ...initialSessionStats,
+//             totalQuestions: questionSet.questions.length
+//           }
+//         };
+        
+//         set({ 
+//           session: newSession,
+//           currentSet: questionSet 
+//         });
+//       },
+      
+//       endSession: () => {
+//         const { session } = get();
+//         if (session) {
+//           set({
+//             session: {
+//               ...session,
+//               endTime: Date.now()
+//             }
+//           });
+//         }
+//       },
+      
+//       nextQuestion: () => {
+//         const { session, currentSet } = get();
+//         if (!session || !currentSet) return;
+        
+//         const totalQuestions = currentSet.questions.length;
+//         const nextIndex = Math.min(session.currentQuestionIndex + 1, totalQuestions - 1);
+        
+//         set({
+//           session: {
+//             ...session,
+//             currentQuestionIndex: nextIndex
+//           }
+//         });
+//       },
+      
+//       previousQuestion: () => {
+//         const { session } = get();
+//         if (!session) return;
+        
+//         const prevIndex = Math.max(session.currentQuestionIndex - 1, 0);
+        
+//         set({
+//           session: {
+//             ...session,
+//             currentQuestionIndex: prevIndex
+//           }
+//         });
+//       },
+      
+//       jumpToQuestion: (index: number) => {
+//         const { session, currentSet } = get();
+//         if (!session || !currentSet) return;
+        
+//         const totalQuestions = currentSet.questions.length;
+//         if (index < 0 || index >= totalQuestions) return;
+        
+//         set({
+//           session: {
+//             ...session,
+//             currentQuestionIndex: index
+//           }
+//         });
+//       },
+      
+//       submitAnswer: (questionId: string, answer: UserAnswer['answer']) => {
+//         const { session, currentSet } = get();
+//         if (!session || !currentSet) return;
+        
+//         const question = currentSet.questions.find(q => q.id === questionId);
+//         if (!question) return;
+        
+//         // Changed from boolean to boolean | undefined to match UserAnswer.isCorrect type
+//         let isCorrect: boolean | undefined = false;
+        
+//         // Check if answer is correct based on question type
+//         switch (question.type) {
+//           case 'multiple_choice':
+//           case 'true_false':
+//             // For multiple choice, check if selected option is the correct one
+//             if (typeof answer === 'string') {
+//               const selectedOption = question.options.find(opt => opt.id === answer);
+//               isCorrect = selectedOption?.isCorrect || false;
+//             }
+//             break;
+            
+//           case 'short_answer':
+//             // For short answer, we can't automatically grade - leave as undefined
+//             isCorrect = undefined;
+//             break;
+            
+//           case 'fill_in_blank':
+//             // For fill in blank, check if all answers match
+//             if (Array.isArray(answer) && answer.length === question.blanks.length) {
+//               isCorrect = question.blanks.every((blank, i) => 
+//                 blank.toLowerCase() === (answer[i] as string).toLowerCase()
+//               );
+//             }
+//             break;
+            
+//           case 'matching':
+//             // For matching, check if all pairs match
+//             if (typeof answer === 'object' && !Array.isArray(answer)) {
+//               const answerObj = answer as Record<string, string>;
+//               const allMatched = question.pairs.every(pair => 
+//                 answerObj[pair.left] === pair.right
+//               );
+//               isCorrect = allMatched;
+//             }
+//             break;
+//         }
+        
+//         // Update user answers
+//         const userAnswers = {
+//           ...session.userAnswers,
+//           [questionId]: {
+//             questionId,
+//             answer,
+//             isCorrect,
+//             timestamp: Date.now()
+//           }
+//         };
+        
+//         // Update stats
+//         const answeredQuestions = Object.keys(userAnswers).length;
+//         // Only count answers where isCorrect is explicitly true
+//         const correctAnswers = Object.values(userAnswers)
+//           .filter(a => a.isCorrect === true).length;
+//         // Only count answers where isCorrect is explicitly false
+//         const incorrectAnswers = Object.values(userAnswers)
+//           .filter(a => a.isCorrect === false).length;
+        
+//         const totalTimeSpent = Date.now() - session.startTime;
+//         const averageTimePerQuestion = answeredQuestions > 0 
+//           ? totalTimeSpent / (answeredQuestions * 1000) // convert to seconds
+//           : 0;
+        
+//         const stats: PracticeSessionStats = {
+//           totalQuestions: currentSet.questions.length,
+//           answeredQuestions,
+//           correctAnswers,
+//           incorrectAnswers,
+//           skippedQuestions: currentSet.questions.length - answeredQuestions,
+//           completionPercentage: (answeredQuestions / currentSet.questions.length) * 100,
+//           averageTimePerQuestion
+//         };
+        
+//         set({
+//           session: {
+//             ...session,
+//             userAnswers,
+//             stats
+//           }
+//         });
+        
+//         // Automatically move to next question
+//         get().nextQuestion();
+//       },
+      
+//       // In the store's resetSession function:
+//       resetSession: () => {
+//         if (get().session === null) return;
+//         set((state) => ({
+//           ...state,
+//           session: null
+//         }));
+//       }
+//     }),
+//     {
+//       name: 'practice-questions-storage',
+//       partialize: (state) => ({
+//         questionSets: state.questionSets,
+//         currentSet: state.currentSet
+//       })
+//     }
+//   )
+// );

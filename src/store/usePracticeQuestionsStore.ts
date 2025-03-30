@@ -1,378 +1,457 @@
+// store/usePracticeQuestionsStore.ts
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { 
-  QuestionSet, 
-  QuestionSetSummary, 
-  CreatePracticeQuestionsRequest,
-  // SubmitAnswersRequest,
-  SubmissionResult,
-  QuestionAnswer,
-  DifficultyLevel,
-  QuestionType
-} from '@/types/practice-questions';
 import { practiceQuestionsService } from '@/services/practiceQuestionsService';
-import { ApiError, showErrorMessage } from '@/helpers/api';
+import { 
+  PracticeQuestionsSetType, 
+  UserAnswer, 
+  PracticeSessionState, 
+  PracticeSessionStats,
+  QuestionType,
+  DifficultyLevel,
+  QuestionTypeEnum,
+  transformPracticeQuestionResponse
+} from '@/types/practice-questions.types';
 
-// Define the error state interface for better typing
-interface ErrorState {
-  message: string;
-  code: number;
-  detail?: string;
+// Added active filters tracking
+interface ActiveFilters {
+  searchTerm: string;
+  courseId?: string;
+  difficulty?: DifficultyLevel | null;
+  type?: QuestionTypeEnum | null;
 }
 
 interface PracticeQuestionsState {
-  // List of question set summaries
-  questionSets: QuestionSetSummary[];
-  // Currently selected question set
-  currentQuestionSet: QuestionSet | null;
-  // User's answers for the current question set
-  userAnswers: QuestionAnswer;
-  // Submission results after submitting answers
-  submissionResults: SubmissionResult | null;
-  // Loading states
+  // Question sets data
+  questionSets: PracticeQuestionsSetType[];
+  filteredSets: PracticeQuestionsSetType[];
+  currentSet: PracticeQuestionsSetType | null;
   isLoading: boolean;
-  isSubmitting: boolean;
   isCreating: boolean;
-  // Error state with better typing
-  error: ErrorState | null;
-  // Filter states
-  courseFilter: string | null;
-  difficultyFilter: DifficultyLevel | null;
-  typeFilter: QuestionType | null;
-  // Action functions
+  error: string | null;
+  
+  // Added active filters state
+  activeFilters: ActiveFilters;
+  
+  // Practice session state
+  session: PracticeSessionState | null;
+  
+  // Actions
   fetchQuestionSets: (courseId?: string) => Promise<void>;
-  fetchQuestionSet: (questionSetId: string) => Promise<void>;
-  createQuestionSet: (data: CreatePracticeQuestionsRequest) => Promise<string | null>;
-  deleteQuestionSet: (questionSetId: string) => Promise<boolean>;
-  updateQuestionSet: (questionSetId: string, data: { title?: string, description?: string }) => Promise<boolean>;
-  submitAnswers: (questionSetId: string, answers: QuestionAnswer) => Promise<void>;
-  setUserAnswer: (questionId: string, answer: string | boolean | string[]) => void;
-  resetSubmission: () => void;
-  setCourseFilter: (courseId: string | null) => void;
-  setDifficultyFilter: (difficulty: DifficultyLevel | null) => void;
-  setTypeFilter: (type: QuestionType | null) => void;
-  clearFilters: () => void;
+  fetchQuestionSetById: (id: string) => Promise<void>;
+  filterQuestionSets: (searchTerm: string, courseId?: string, difficulty?: DifficultyLevel | null, type?: QuestionTypeEnum | null) => void;
+  resetFilters: () => void;
   clearError: () => void;
-  // Helper for setting errors
-  setError: (error: ApiError | null) => void;
+  createQuestionSet: (params: {
+    topic: string;
+    courseId: string;
+    moduleId?: string;
+    questionCount: number;
+    difficulty: string;
+    questionTypes: QuestionType[];
+  }) => Promise<string>;
+  
+  // Session actions
+  startSession: (setId: string) => void;
+  endSession: () => void;
+  nextQuestion: () => void;
+  previousQuestion: () => void;
+  jumpToQuestion: (index: number) => void;
+  submitAnswer: (questionId: string, answer: UserAnswer['answer']) => void;
+  resetSession: () => void;
 }
 
-// Create the store with persist middleware to save some data to localStorage
+const initialSessionStats: PracticeSessionStats = {
+  totalQuestions: 0,
+  answeredQuestions: 0,
+  correctAnswers: 0,
+  incorrectAnswers: 0,
+  skippedQuestions: 0,
+  completionPercentage: 0,
+  averageTimePerQuestion: 0
+};
+
+const initialActiveFilters: ActiveFilters = {
+  searchTerm: '',
+  courseId: undefined,
+  difficulty: null,
+  type: null
+};
+
 export const usePracticeQuestionsStore = create<PracticeQuestionsState>()(
   persist(
     (set, get) => ({
-      // Initial state
+      // State
       questionSets: [],
-      currentQuestionSet: null,
-      userAnswers: {},
-      submissionResults: null,
+      filteredSets: [],
+      currentSet: null,
       isLoading: false,
-      isSubmitting: false,
       isCreating: false,
       error: null,
-      courseFilter: null,
-      difficultyFilter: null,
-      typeFilter: null,
-
-      // Enhanced error handler - now properly displays errors without throwing them
-      setError: (error: ApiError | null) => {
-        if (error === null) {
-          set({ error: null });
-          return;
-        }
-        
-        // Set the error state for UI components to access
-        set({ 
-          error: {
-            message: error.message,
-            code: error.status,
-            detail: error.detail
-          }
-        });
-        
-        // Display error message to user unless it's a 404 
-        // since we handle those differently in the UI
-        if (error.status !== 404) {
-          showErrorMessage(error);
-        }
-      },
-
-      // Actions
+      activeFilters: initialActiveFilters,
+      session: null,
+      
+      // API actions
       fetchQuestionSets: async (courseId?: string) => {
         try {
           set({ isLoading: true, error: null });
-          const result = await practiceQuestionsService.getQuestionSets(courseId);
-          // Note: Now getQuestionSets will return an empty array for 404 errors
-          // instead of throwing, so the rest of this code will execute normally
-          set({ questionSets: result, isLoading: false });
+          
+          // Use the correct method from the service
+          const result = await practiceQuestionsService.fetchPracticeQuestionSets();
+          
+          // Filter by courseId if provided
+          const filteredResult = courseId 
+            ? result.filter(set => set.courseId === courseId)
+            : result;
+            
+          // Update activeFilters if courseId is provided
+          const activeFilters = courseId 
+            ? { ...get().activeFilters, courseId } 
+            : get().activeFilters;
+            
+          set({ 
+            questionSets: result, 
+            filteredSets: filteredResult,
+            activeFilters,
+            isLoading: false 
+          });
         } catch (error) {
-          console.error('Failed to fetch question sets:', error);
-          
-          // Handle non-404 errors
-          if (error instanceof ApiError) {
-            get().setError(error);
-          } else {
-            get().setError(new ApiError(
-              'An unexpected error occurred while fetching question sets',
-              500, 
-              error instanceof Error ? error.message : String(error)
-            ));
-          }
-          
-          // Always set loading to false, even on error
-          set({ isLoading: false });
+          console.error('Error fetching question sets:', error);
+          set({ 
+            error: error instanceof Error ? error.message : 'An unknown error occurred',
+            isLoading: false 
+          });
         }
       },
-
-      fetchQuestionSet: async (questionSetId: string) => {
-        try {
-          set({ isLoading: true, error: null, userAnswers: {}, submissionResults: null });
-          const result = await practiceQuestionsService.getQuestionSet(questionSetId);
-          set({ currentQuestionSet: result, isLoading: false });
-        } catch (error) {
-          console.error('Failed to fetch question set:', error);
-          
-          if (error instanceof ApiError) {
-            // For 404, we'll just set the currentQuestionSet to null
-            // and set an appropriate error message without showing a popup
-            if (error.status === 404) {
-              set({ 
-                currentQuestionSet: null, 
-                error: {
-                  message: `Question set not found or no longer available`,
-                  code: 404,
-                  detail: error.detail || `The question set with ID ${questionSetId} could not be found`
-                },
-                isLoading: false 
-              });
-            } else {
-              // For other errors, use the standard error handler
-              get().setError(error);
-            }
-          } else {
-            get().setError(new ApiError(
-              'An unexpected error occurred while fetching the question set',
-              500,
-              error instanceof Error ? error.message : String(error)
-            ));
-          }
-          
-          set({ isLoading: false });
-        }
-      },
-
-      createQuestionSet: async (data: CreatePracticeQuestionsRequest) => {
-        try {
-          set({ isCreating: true, error: null });
-          const result = await practiceQuestionsService.createQuestionSet(data);
-          
-          // Refresh the question sets list
-          await get().fetchQuestionSets(data.courseId);
-          
-          set({ isCreating: false });
-          return result.id;
-        } catch (error) {
-          console.error('Failed to create question set:', error);
-          
-          if (error instanceof ApiError) {
-            // For validation errors (422), provide more specific guidance
-            if (error.status === 422) {
-              get().setError(new ApiError(
-                'Please check your question set configuration',
-                422,
-                error.detail || 'The server could not process your question configuration'
-              ));
-            } else {
-              get().setError(error);
-            }
-          } else {
-            get().setError(new ApiError(
-              'Failed to create the question set',
-              500,
-              error instanceof Error ? error.message : String(error)
-            ));
-          }
-          
-          set({ isCreating: false });
-          return null;
-        }
-      },
-
-      deleteQuestionSet: async (questionSetId: string) => {
+      
+      fetchQuestionSetById: async (id: string) => {
         try {
           set({ isLoading: true, error: null });
-          // Service now handles 404 as success
-          await practiceQuestionsService.deleteQuestionSet(questionSetId);
           
-          // Update the list by removing the deleted question set
-          const updatedSets = get().questionSets.filter(set => set.id !== questionSetId);
-          set({ questionSets: updatedSets, isLoading: false });
+          // Use the service to fetch the raw response
+          const rawResponse = await practiceQuestionsService.fetchPracticeQuestionSet(id);
           
-          return true;
+          // Transform the raw response to our application format
+          const transformedData = transformPracticeQuestionResponse(rawResponse);
+          
+          set({ currentSet: transformedData, isLoading: false });
         } catch (error) {
-          console.error('Failed to delete question set:', error);
-          
-          if (error instanceof ApiError) {
-            get().setError(error);
-          } else {
-            get().setError(new ApiError(
-              'Failed to delete the question set',
-              500,
-              error instanceof Error ? error.message : String(error)
-            ));
-          }
-          
-          set({ isLoading: false });
-          return false;
+          console.error(`Error fetching question set ${id}:`, error);
+          set({ 
+            error: error instanceof Error ? error.message : 'An unknown error occurred',
+            isLoading: false 
+          });
         }
       },
-
-      updateQuestionSet: async (questionSetId: string, data) => {
-        try {
-          set({ isLoading: true, error: null });
-          const updatedSet = await practiceQuestionsService.updateQuestionSet(questionSetId, data);
-          
-          // Update both the current question set (if it's the one being edited)
-          // and the list of question sets
-          if (get().currentQuestionSet?.id === questionSetId) {
-            set({ currentQuestionSet: updatedSet });
-          }
-          
-          const updatedSets = get().questionSets.map(set => 
-            set.id === questionSetId 
-              ? { ...set, title: data.title || set.title, description: data.description || set.description }
-              : set
+      
+      filterQuestionSets: (searchTerm: string, courseId?: string, difficulty?: DifficultyLevel | null, type?: QuestionTypeEnum | null) => {
+        const { questionSets, activeFilters } = get();
+        
+        // Skip if filters haven't changed
+        if (
+          activeFilters.searchTerm === searchTerm &&
+          activeFilters.courseId === courseId &&
+          activeFilters.difficulty === difficulty &&
+          activeFilters.type === type
+        ) {
+          return;
+        }
+        
+        let filtered = [...questionSets];
+        
+        // Filter by search term
+        if (searchTerm) {
+          const term = searchTerm.toLowerCase();
+          filtered = filtered.filter(set => 
+            set.topic.toLowerCase().includes(term)
           );
-          
-          set({ questionSets: updatedSets, isLoading: false });
-          return true;
-        } catch (error) {
-          console.error('Failed to update question set:', error);
-          
-          if (error instanceof ApiError) {
-            if (error.status === 404) {
-              // Handle resource not found more gracefully
-              set({ 
-                error: {
-                  message: 'Question set not found or no longer available',
-                  code: 404,
-                  detail: error.detail || `The question set with ID ${questionSetId} could not be found`
-                },
-                isLoading: false 
-              });
-              
-              // If the current set is the one we tried to update, clear it
-              if (get().currentQuestionSet?.id === questionSetId) {
-                set({ currentQuestionSet: null });
-              }
-              
-              // Remove from list if it's there
-              const updatedSets = get().questionSets.filter(set => set.id !== questionSetId);
-              if (updatedSets.length !== get().questionSets.length) {
-                set({ questionSets: updatedSets });
-              }
-            } else {
-              get().setError(error);
-            }
-          } else {
-            get().setError(new ApiError(
-              'Failed to update the question set',
-              500,
-              error instanceof Error ? error.message : String(error)
-            ));
-          }
-          
-          set({ isLoading: false });
-          return false;
         }
-      },
-
-      submitAnswers: async (questionSetId: string, answers: QuestionAnswer) => {
-        try {
-          set({ isSubmitting: true, error: null });
-          const results = await practiceQuestionsService.submitAnswers(questionSetId, { answers });
-          set({ submissionResults: results, isSubmitting: false });
-        } catch (error) {
-          console.error('Failed to submit answers:', error);
-          
-          if (error instanceof ApiError) {
-            if (error.status === 404) {
-              // Handle resource not found specifically
-              set({ 
-                error: {
-                  message: 'Question set no longer available',
-                  code: 404,
-                  detail: error.detail || `The question set you're trying to submit answers for could not be found`
-                },
-                isSubmitting: false 
-              });
-              
-              // If the current set is the one we tried to submit for, clear it
-              if (get().currentQuestionSet?.id === questionSetId) {
-                set({ currentQuestionSet: null });
-              }
-            } else if (error.status === 400) {
-              // Handle validation errors specifically
-              get().setError(new ApiError(
-                'Please complete all required questions',
-                400,
-                error.detail || 'Make sure all required questions are answered properly'
-              ));
-            } else {
-              get().setError(error);
-            }
-          } else {
-            get().setError(new ApiError(
-              'Failed to submit your answers',
-              500,
-              error instanceof Error ? error.message : String(error)
-            ));
-          }
-          
-          set({ isSubmitting: false });
+        
+        // Filter by course
+        if (courseId) {
+          filtered = filtered.filter(set => set.courseId === courseId);
         }
-      },
-
-      setUserAnswer: (questionId: string, answer) => {
-        set(state => ({
-          userAnswers: {
-            ...state.userAnswers,
-            [questionId]: answer
+        
+        // Filter by difficulty
+        if (difficulty) {
+          filtered = filtered.filter(set => set.difficulty === difficulty);
+        }
+        
+        // Filter by question type
+        if (type) {
+          filtered = filtered.filter(set => 
+            set.questions && set.questions.some(q => q.type === type)
+          );
+        }
+        
+        set({ 
+          filteredSets: filtered,
+          activeFilters: {
+            searchTerm,
+            courseId,
+            difficulty,
+            type
           }
-        }));
+        });
       },
-
-      resetSubmission: () => {
-        set({ userAnswers: {}, submissionResults: null });
+      
+      resetFilters: () => {
+        set({ 
+          filteredSets: get().questionSets,
+          activeFilters: initialActiveFilters
+        });
       },
-
-      setCourseFilter: (courseId) => {
-        set({ courseFilter: courseId });
-      },
-
-      setDifficultyFilter: (difficulty) => {
-        set({ difficultyFilter: difficulty });
-      },
-
-      setTypeFilter: (type) => {
-        set({ typeFilter: type });
-      },
-
-      clearFilters: () => {
-        set({ courseFilter: null, difficultyFilter: null, typeFilter: null });
-      },
-
+      
       clearError: () => {
         set({ error: null });
+      },
+      
+      createQuestionSet: async (params) => {
+        set({ isCreating: true, error: null });
+        
+        try {
+          // Transform the params to match the service expectations
+          const serviceParams = {
+            topic: params.topic,
+            courseId: params.courseId,
+            moduleId: params.moduleId,
+            questionCount: params.questionCount,
+            difficulty: params.difficulty,
+            questionTypes: params.questionTypes.map(type => type.toString())
+          };
+          
+          const result = await practiceQuestionsService.generatePracticeQuestions(serviceParams);
+          
+          // Update the questionSets state with the new set
+          set(state => ({
+            questionSets: [...state.questionSets, result],
+            filteredSets: [...state.filteredSets, result],
+            currentSet: result,
+            isCreating: false
+          }));
+          
+          return result.id;
+        } catch (error) {
+          console.error('Error creating question set:', error);
+          set({ 
+            error: error instanceof Error ? error.message : 'Failed to create practice questions',
+            isCreating: false 
+          });
+          throw error;
+        }
+      },
+      
+      // Session management
+      startSession: (setId: string) => {
+        // Don't create a new session if one already exists for this set
+        if (get().session && get().currentSet?.id === setId) {
+          return;
+        }
+        
+        const questionSet = get().questionSets.find(set => set.id === setId) || 
+                          get().currentSet;
+        
+        if (!questionSet) {
+          set({ error: 'Question set not found' });
+          return;
+        }
+        
+        // Add additional check for questions array
+        if (!questionSet.questions || !Array.isArray(questionSet.questions)) {
+          set({ error: 'Question set contains no questions or invalid data' });
+          return;
+        }
+        
+        const newSession = {
+          currentQuestionIndex: 0,
+          userAnswers: {},
+          startTime: Date.now(),
+          stats: {
+            ...initialSessionStats,
+            totalQuestions: questionSet.questions.length
+          }
+        };
+        
+        set({ 
+          session: newSession,
+          currentSet: questionSet,
+          error: null // Clear any previous errors
+        });
+      },
+      
+      endSession: () => {
+        const { session } = get();
+        if (session) {
+          set({
+            session: {
+              ...session,
+              endTime: Date.now()
+            }
+          });
+        }
+      },
+      
+      nextQuestion: () => {
+        const { session, currentSet } = get();
+        if (!session || !currentSet) return;
+        
+        const totalQuestions = currentSet.questions.length;
+        const nextIndex = Math.min(session.currentQuestionIndex + 1, totalQuestions - 1);
+        
+        set({
+          session: {
+            ...session,
+            currentQuestionIndex: nextIndex
+          }
+        });
+      },
+      
+      previousQuestion: () => {
+        const { session } = get();
+        if (!session) return;
+        
+        const prevIndex = Math.max(session.currentQuestionIndex - 1, 0);
+        
+        set({
+          session: {
+            ...session,
+            currentQuestionIndex: prevIndex
+          }
+        });
+      },
+      
+      jumpToQuestion: (index: number) => {
+        const { session, currentSet } = get();
+        if (!session || !currentSet) return;
+        
+        const totalQuestions = currentSet.questions.length;
+        if (index < 0 || index >= totalQuestions) return;
+        
+        set({
+          session: {
+            ...session,
+            currentQuestionIndex: index
+          }
+        });
+      },
+      
+      submitAnswer: (questionId: string, answer: UserAnswer['answer']) => {
+        const { session, currentSet } = get();
+        if (!session || !currentSet) return;
+        
+        const question = currentSet.questions.find(q => q.id === questionId);
+        if (!question) return;
+        
+        // Changed from boolean to boolean | undefined to match UserAnswer.isCorrect type
+        let isCorrect: boolean | undefined = false;
+        
+        // Check if answer is correct based on question type
+        switch (question.type) {
+          case 'multiple_choice':
+          case 'true_false':
+            // For multiple choice, check if selected option is the correct one
+            if (typeof answer === 'string') {
+              const selectedOption = question.options.find(opt => opt.id === answer);
+              isCorrect = selectedOption?.isCorrect || false;
+            }
+            break;
+            
+          case 'short_answer':
+            // For short answer, we can't automatically grade - leave as undefined
+            isCorrect = undefined;
+            break;
+            
+          case 'fill_in_blank':
+            // For fill in blank, check if all answers match
+            if (Array.isArray(answer) && answer.length === question.blanks.length) {
+              isCorrect = question.blanks.every((blank, i) => 
+                blank.toLowerCase() === (answer[i] as string).toLowerCase()
+              );
+            }
+            break;
+            
+          case 'matching':
+            // For matching, check if all pairs match
+            if (typeof answer === 'object' && !Array.isArray(answer)) {
+              const answerObj = answer as Record<string, string>;
+              const allMatched = question.pairs.every(pair => 
+                answerObj[pair.left] === pair.right
+              );
+              isCorrect = allMatched;
+            }
+            break;
+        }
+        
+        // Update user answers
+        const userAnswers = {
+          ...session.userAnswers,
+          [questionId]: {
+            questionId,
+            answer,
+            isCorrect,
+            timestamp: Date.now()
+          }
+        };
+        
+        // Update stats
+        const answeredQuestions = Object.keys(userAnswers).length;
+        // Only count answers where isCorrect is explicitly true
+        const correctAnswers = Object.values(userAnswers)
+          .filter(a => a.isCorrect === true).length;
+        // Only count answers where isCorrect is explicitly false
+        const incorrectAnswers = Object.values(userAnswers)
+          .filter(a => a.isCorrect === false).length;
+        
+        const totalTimeSpent = Date.now() - session.startTime;
+        const averageTimePerQuestion = answeredQuestions > 0 
+          ? totalTimeSpent / (answeredQuestions * 1000) // convert to seconds
+          : 0;
+        
+        const stats: PracticeSessionStats = {
+          totalQuestions: currentSet.questions.length,
+          answeredQuestions,
+          correctAnswers,
+          incorrectAnswers,
+          skippedQuestions: currentSet.questions.length - answeredQuestions,
+          completionPercentage: (answeredQuestions / currentSet.questions.length) * 100,
+          averageTimePerQuestion
+        };
+        
+        set({
+          session: {
+            ...session,
+            userAnswers,
+            stats
+          }
+        });
+        
+        // Automatically move to next question
+        get().nextQuestion();
+      },
+      
+      // In the store's resetSession function:
+      resetSession: () => {
+        // Check if there's an active session before resetting
+        const currentState = get();
+        if (!currentState.session) return;
+        
+        try {
+          // Use a more targeted update that only affects the session
+          set((state) => ({
+            ...state,
+            session: null,
+            // Don't modify other properties of the state
+          }));
+        } catch (error) {
+          console.error('Error resetting session:', error);
+        }
       }
     }),
     {
       name: 'practice-questions-storage',
-      partialize: (state) => ({ 
-        // Only persist these fields
-        courseFilter: state.courseFilter,
-        difficultyFilter: state.difficultyFilter,
-        typeFilter: state.typeFilter
+      partialize: (state) => ({
+        questionSets: state.questionSets,
+        currentSet: state.currentSet
       })
     }
   )

@@ -14,8 +14,8 @@ import {
   PopoverTrigger
 } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
-import { DifficultyLevel, QuestionType } from '@/types/practice-questions';
-import { usePracticeQuestionsStore } from '@/store/usePracticeQuestionsStore';
+import { DifficultyLevel, QuestionTypeEnum } from '@/types/practice-questions.types';
+import { usePracticeQuestionsStore } from "@/store/usePracticeQuestionsStore";
 import { Filter, ChevronsUpDown, FilterX } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
@@ -30,12 +30,81 @@ interface QuestionSetFiltersProps {
 
 // Question type options
 const questionTypes = [
-  { value: QuestionType.MULTIPLE_CHOICE, label: 'Multiple Choice' },
-  { value: QuestionType.SHORT_ANSWER, label: 'Short Answer' },
-  { value: QuestionType.TRUE_FALSE, label: 'True/False' },
-  { value: QuestionType.FILL_IN_BLANK, label: 'Fill-in-Blank' },
-  { value: QuestionType.MATCHING, label: 'Matching' }
+  { value: QuestionTypeEnum.MULTIPLE_CHOICE, label: 'Multiple Choice' },
+  { value: QuestionTypeEnum.SHORT_ANSWER, label: 'Short Answer' },
+  { value: QuestionTypeEnum.TRUE_FALSE, label: 'True/False' },
+  { value: QuestionTypeEnum.FILL_IN_BLANK, label: 'Fill-in-Blank' },
+  { value: QuestionTypeEnum.MATCHING, label: 'Matching' }
 ];
+
+/**
+ * Creates an adapter hook that works with the practice questions store
+ * to provide filter functionality
+ */
+function useFiltersAdapter() {
+  // Get the store
+  const filterQuestionSets = usePracticeQuestionsStore(state => state.filterQuestionSets);
+  const resetFilters = usePracticeQuestionsStore(state => state.resetFilters);
+  
+  // Local state for filters
+  const [courseFilter, setCourseFilter] = React.useState<string | null>(null);
+  const [difficultyFilter, setDifficultyFilter] = React.useState<DifficultyLevel | null>(null);
+  const [typeFilter, setTypeFilter] = React.useState<QuestionTypeEnum | null>(null);
+  
+  // Use a ref to prevent initial effect from triggering
+  const isInitialMount = React.useRef(true);
+  // Track if changes are internal
+  const isInternalChange = React.useRef(false);
+  
+  // Apply filters when courseFilter changes
+  React.useEffect(() => {
+    // Skip first render
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    
+    // Skip if this is not user-initiated
+    if (!isInternalChange.current) {
+      return;
+    }
+    
+    // Reset internal change flag
+    isInternalChange.current = false;
+    
+    // Filter with just the parameters the store supports
+    const searchTerm = '';
+    filterQuestionSets(searchTerm, courseFilter || undefined);
+  }, [courseFilter, filterQuestionSets]);
+  
+  // Wrapper for setCourseFilter that also sets internal change flag
+  const handleSetCourseFilter = React.useCallback((value: string | null) => {
+    isInternalChange.current = true;
+    setCourseFilter(value);
+  }, []);
+  
+  // Clear all filters
+  const clearFilters = React.useCallback(() => {
+    setCourseFilter(null);
+    setDifficultyFilter(null);
+    setTypeFilter(null);
+    
+    // Reset store filters
+    if (resetFilters) {
+      resetFilters();
+    }
+  }, [resetFilters]);
+  
+  return {
+    courseFilter,
+    difficultyFilter,
+    typeFilter,
+    setCourseFilter: handleSetCourseFilter,
+    setDifficultyFilter,
+    setTypeFilter,
+    clearFilters
+  };
+}
 
 export function QuestionSetFilters({ courses }: QuestionSetFiltersProps) {
   const { 
@@ -46,10 +115,10 @@ export function QuestionSetFilters({ courses }: QuestionSetFiltersProps) {
     setDifficultyFilter,
     setTypeFilter,
     clearFilters
-  } = usePracticeQuestionsStore();
+  } = useFiltersAdapter();
 
   // State to track selected question types
-  const [selectedTypes, setSelectedTypes] = React.useState<QuestionType[]>(
+  const [selectedTypes, setSelectedTypes] = React.useState<QuestionTypeEnum[]>(
     typeFilter ? [typeFilter] : []
   );
   
@@ -78,8 +147,8 @@ export function QuestionSetFilters({ courses }: QuestionSetFiltersProps) {
   }, [typeFilter, selectedTypes]);
 
   // Handle question type toggle
-  const handleTypeToggle = (type: QuestionType) => {
-    let newSelectedTypes: QuestionType[];
+  const handleTypeToggle = (type: QuestionTypeEnum) => {
+    let newSelectedTypes: QuestionTypeEnum[];
     if (selectedTypes.includes(type)) {
       newSelectedTypes = selectedTypes.filter(t => t !== type);
     } else {
@@ -294,6 +363,9 @@ export function QuestionSetFilters({ courses }: QuestionSetFiltersProps) {
                   ? questionTypes.find(t => t.value === selectedTypes[0])?.label 
                   : `${selectedTypes.length} selected`}
               </Badge>
+            )}
+            {getActiveFiltersCount() === 0 && (
+              <span className="text-xs text-muted-foreground">No active filters</span>
             )}
           </div>
         </div>

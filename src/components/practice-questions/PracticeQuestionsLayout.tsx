@@ -46,8 +46,14 @@ export function PracticeQuestionsLayout({
   const [activeView, setActiveView] = React.useState<string>('question-sets');
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   
+  // Memoize children to prevent unnecessary re-renders
+  const memoizedChildren = React.useMemo(() => children, [children]);
+  
+  // Memoize courses to prevent unnecessary re-renders
+  const memoizedCourses = React.useMemo(() => courses, [courses]);
+  
   // Define sidebar navigation items with keys instead of hrefs
-  const sidebarNavItems: SidebarNavItem[] = [
+  const sidebarNavItems: SidebarNavItem[] = React.useMemo(() => [
     {
       title: "Question Sets",
       key: "question-sets",
@@ -72,18 +78,18 @@ export function PracticeQuestionsLayout({
       icon: <Settings className="h-5 w-5" />,
       active: activeView === "settings"
     }
-  ];
+  ], [activeView]);
   
   // Handle navigation item click
-  const handleNavItemClick = (key: string) => {
+  const handleNavItemClick = React.useCallback((key: string) => {
     setActiveView(key);
     setSidebarOpen(false);
-  };
+  }, []);
   
   // Handle tab change on mobile
-  const handleTabChange = (value: string) => {
+  const handleTabChange = React.useCallback((value: string) => {
     setActiveView(value);
-  };
+  }, []);
   
   // Initialize activeView based on pathname
   React.useEffect(() => {
@@ -94,23 +100,25 @@ export function PracticeQuestionsLayout({
   }, [pathname]);
   
   // Check if we're on a specific question detail page
-  const isQuestionDetail = pathname.includes('/practice-questions/') && 
-    pathname !== "/practice-questions";
+  const isQuestionDetail = React.useMemo(() => 
+    pathname.includes('/practice-questions/') && 
+    pathname !== "/practice-questions", 
+  [pathname]);
   
   // Toggle sidebar on mobile
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
+  const toggleSidebar = React.useCallback(() => {
+    setSidebarOpen(prev => !prev);
+  }, []);
 
   // Component to render course list in sidebar
-  const CourseList = () => (
+  const CourseList = React.memo(() => (
     <div className="space-y-3 mt-2">
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-medium text-muted-foreground">Your courses</h4>
       </div>
       <ScrollArea className="h-[180px]">
         <div className="space-y-1">
-          {courses.map((course) => (
+          {memoizedCourses.map((course) => (
             <button 
               key={course.id}
               onClick={() => {
@@ -129,15 +137,15 @@ export function PracticeQuestionsLayout({
         </div>
       </ScrollArea>
     </div>
-  );
+  ));
   
   // Render content based on activeView
-  const renderContent = () => {
+  const renderContent = React.useCallback(() => {
     switch (activeView) {
       case 'history':
-        return <PracticeHistory courses={courses} />;
+        return <PracticeHistory courses={memoizedCourses} />;
       case 'question-sets':
-        return children;
+        return memoizedChildren;
       case 'courses':
         // You would implement a Courses component here
         return <div>Courses Content</div>;
@@ -145,9 +153,9 @@ export function PracticeQuestionsLayout({
         // You would implement a Settings component here
         return <div>Settings Content</div>;
       default:
-        return children;
+        return memoizedChildren;
     }
-  };
+  }, [activeView, memoizedChildren, memoizedCourses]);
   
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background">
@@ -277,3 +285,5 @@ export function PracticeQuestionsLayout({
     </div>
   );
 }
+
+export default React.memo(PracticeQuestionsLayout);
