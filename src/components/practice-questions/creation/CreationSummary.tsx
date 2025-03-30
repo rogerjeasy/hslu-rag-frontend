@@ -1,6 +1,6 @@
 import React from 'react';
 import { DifficultyLevel, QuestionTypeEnum } from '@/types/practice-questions.types';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Check, BookOpen, BarChart3, ListChecks, User, GraduationCap } from 'lucide-react';
 import { cn } from '@/lib/utils';

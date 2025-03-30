@@ -44,14 +44,13 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { formatDistanceToNow } from 'date-fns';
-import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast-provider';
 
 export function PracticeQuestionsList() {
   const router = useRouter();
   const { toast } = useToast();
   const { 
-    questionSets, 
+    // questionSets, 
     filteredSets, 
     fetchQuestionSets, 
     filterQuestionSets, 
@@ -298,7 +297,7 @@ export function PracticeQuestionsList() {
             ) : (
               <Alert className="max-w-md">
                 <AlertDescription className="flex flex-col items-center text-center">
-                  <p className="mb-2">You don't have any practice question sets yet.</p>
+                  <p className="mb-2">You don&apos;t have any practice question sets yet.</p>
                   <Button onClick={handleCreateNew} size="sm">
                     Create Your First Set
                   </Button>

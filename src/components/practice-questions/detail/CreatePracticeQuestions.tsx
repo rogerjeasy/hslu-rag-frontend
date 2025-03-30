@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCourseStore } from '@/store/courseStore';
-import { usePracticeQuestionsStore } from '@/store/usePracticeQuestionsStore';
+// import { usePracticeQuestionsStore } from '@/store/usePracticeQuestionsStore';
 import { practiceQuestionsService } from '@/services/practiceQuestionsService';
 import { DifficultyLevel, QuestionTypeEnum } from '@/types/practice-questions.types';
 import { LoadingWhileCreating } from '../../study-guides/create/LoadingWhileCreating';
@@ -19,7 +19,6 @@ import {
   FormLabel, 
   FormMessage 
 } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { 
   Select, 
@@ -28,11 +27,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import { 
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from '@/components/ui/popover';
+
 import { Slider } from '@/components/ui/slider';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -276,7 +271,7 @@ export function CreatePracticeQuestions() {
                         </SelectContent>
                       </Select>
                       <FormDescription>
-                        Questions will be based on this course's materials.
+                        Questions will be based on this course&apos;s materials.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

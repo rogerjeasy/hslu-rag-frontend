@@ -9,8 +9,7 @@ import {
   PracticeSessionStats,
   QuestionType,
   DifficultyLevel,
-  QuestionTypeEnum,
-  transformPracticeQuestionResponse
+  QuestionTypeEnum
 } from '@/types/practice-questions.types';
 
 // Added active filters tracking
@@ -128,13 +127,16 @@ export const usePracticeQuestionsStore = create<PracticeQuestionsState>()(
         try {
           set({ isLoading: true, error: null });
           
-          // Use the service to fetch the raw response
-          const rawResponse = await practiceQuestionsService.fetchPracticeQuestionSet(id);
+          // Check if we already have this set in state
+          const existingSet = get().questionSets.find(set => set.id === id);
+          if (existingSet) {
+            set({ currentSet: existingSet, isLoading: false });
+            return;
+          }
           
-          // Transform the raw response to our application format
-          const transformedData = transformPracticeQuestionResponse(rawResponse);
-          
-          set({ currentSet: transformedData, isLoading: false });
+          // Use the correct method from the service
+          const data = await practiceQuestionsService.fetchPracticeQuestionSet(id);
+          set({ currentSet: data, isLoading: false });
         } catch (error) {
           console.error(`Error fetching question set ${id}:`, error);
           set({ 

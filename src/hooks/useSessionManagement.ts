@@ -6,6 +6,7 @@ export function useSessionManagement(questionSetId: string) {
   const resetSession = usePracticeQuestionsStore(state => state.resetSession);
   // Use a ref to prevent multiple cleanup calls
   const isUnmountedRef = useRef(false);
+  console.log("questionSetId", questionSetId);
   
   useEffect(() => {
     // Reset the ref on mount

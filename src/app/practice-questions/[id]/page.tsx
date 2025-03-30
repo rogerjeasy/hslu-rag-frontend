@@ -1,5 +1,3 @@
-import PracticeQuestionSetLayout from '@/components/practice-questions/PracticeQuestionSetLayout';
+import SimplePracticeQuestions from "@/components/practice-questions/simple_ui/SimpePracticeQuestions";
 
-export default function PracticeQuestionSetPageRoute() {
-  return <PracticeQuestionSetLayout />;
-}
+export default SimplePracticeQuestions;

@@ -37,60 +37,69 @@ import {
         }
       }
   
-    // Fetch a specific practice question set by ID
-    async fetchPracticeQuestionSet(id: string): Promise<PracticeQuestionSetResponse> {
-        try {
-          // API call returns PracticeQuestionSetResponse format
-          const response = await api.get(`${this.API_URL}/practice-questions/${id}`);
+    
+      // Fetch a specific practice question set by ID
+async fetchPracticeQuestionSet(id: string): Promise<PracticeQuestionsSetType> {
+    try {
+      // API call returns PracticeQuestionSetResponse format
+      const response = await api.get(`${this.API_URL}/practice-questions/${id}`);
+      
+      // Development-only logs - force immediate output
+      if (process.env.NODE_ENV !== 'production') {
+        console.group(`--- fetchPracticeQuestionSet(${id}) ---`);
+        console.log('Raw API response:', JSON.stringify(response.data, null, 2));
+        console.log('Response has meta field:', response.data && 'meta' in response.data);
+        
+        if (response.data) {
+          console.log('Response keys:', Object.keys(response.data));
           
-          // Development-only logs - force immediate output
-          if (process.env.NODE_ENV !== 'production') {
-            console.group(`--- fetchPracticeQuestionSet(${id}) ---`);
-            console.log('Raw API response:', JSON.stringify(response.data, null, 2));
-            console.log('Response has meta field:', response.data && 'meta' in response.data);
+          if ('meta' in response.data && response.data.meta) {
+            console.log('Meta keys:', Object.keys(response.data.meta));
             
-            if (response.data) {
-              console.log('Response keys:', Object.keys(response.data));
+            if ('questions' in response.data.meta) {
+              console.log('Questions is array:', Array.isArray(response.data.meta.questions));
+              console.log('Questions length:', Array.isArray(response.data.meta.questions) ? 
+                response.data.meta.questions.length : 'not an array');
               
-              if ('meta' in response.data && response.data.meta) {
-                console.log('Meta keys:', Object.keys(response.data.meta));
-                
-                if ('questions' in response.data.meta) {
-                  console.log('Questions is array:', Array.isArray(response.data.meta.questions));
-                  console.log('Questions length:', Array.isArray(response.data.meta.questions) ? 
-                    response.data.meta.questions.length : 'not an array');
-                  
-                  // Store questions in our cache
-                  if (Array.isArray(response.data.meta.questions)) {
-                    this.currentQuestions[id] = response.data.meta.questions;
-                  }
-                } else {
-                  console.warn('Meta is missing questions field');
-                }
+              // Store questions in our cache
+              if (Array.isArray(response.data.meta.questions)) {
+                this.currentQuestions[id] = response.data.meta.questions;
               }
-            }
-            console.groupEnd();
-          } else {
-            // For production, still store the questions
-            if (response.data && 
-                response.data.meta && 
-                Array.isArray(response.data.meta.questions)) {
-              this.currentQuestions[id] = response.data.meta.questions;
+            } else {
+              console.warn('Meta is missing questions field');
             }
           }
-          
-          // Return the raw response data as PracticeQuestionSetResponse
-          return response.data as PracticeQuestionSetResponse;
-        } catch (error) {
-          console.error(`Failed to fetch practice question set with ID ${id}:`, error);
-          throw error;
+        }
+        console.groupEnd();
+      } else {
+        // For production, still store the questions
+        if (response.data && 
+            response.data.meta && 
+            Array.isArray(response.data.meta.questions)) {
+          this.currentQuestions[id] = response.data.meta.questions;
         }
       }
       
-    // Get currently cached questions for a specific set ID
-    getCurrentQuestions(id: string): QuestionType[] | null {
-      return this.currentQuestions[id] || null;
+      // Transform the raw response into our standardized format
+      if (response.data && 'meta' in response.data) {
+        // Response is in PracticeQuestionSetResponse format and needs transformation
+        return transformPracticeQuestionResponse(response.data as PracticeQuestionSetResponse);
+      } else if (response.data && 'questions' in response.data) {
+        // Response is already in PracticeQuestionsSetType format
+        return response.data as PracticeQuestionsSetType;
+      } else {
+        throw new Error('Invalid response format: missing required fields');
+      }
+    } catch (error) {
+      console.error(`Failed to fetch practice question set with ID ${id}:`, error);
+      throw error;
     }
+  }
+  
+  // Get currently cached questions for a specific set ID
+  getCurrentQuestions(id: string): QuestionType[] | null {
+    return this.currentQuestions[id] || null;
+  }
   
     // Delete a practice question set
     async deletePracticeQuestionSet(id: string): Promise<{ success: boolean; message: string }> {
@@ -185,5 +194,6 @@ import {
       }
     }
   }
+  
   
   export const practiceQuestionsService = new PracticeQuestionsService();

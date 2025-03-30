@@ -3,7 +3,7 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { Calendar, Award, BookOpen, Eye } from 'lucide-react';
-import { QuestionSetSummary } from '@/types/practice-questions';
+import { QuestionSetSummary } from '@/types/practice-questions.types';
 import { DifficultyBadge } from '@/components/practice-questions/DifficultyBadge';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -136,9 +136,9 @@ export function HistoryItemCard({
               <Calendar className="h-3.5 w-3.5 mr-1" />
               <TooltipProvider>
                 <Tooltip>
-                  <TooltipTrigger>
+                  {/* <TooltipTrigger>
                     <span>{formatDate(questionSet.createdAt)}</span>
-                  </TooltipTrigger>
+                  </TooltipTrigger> */}
                   <TooltipContent>
                     <p>{format(new Date(questionSet.createdAt), 'PPPP')}</p>
                   </TooltipContent>
