@@ -1,7 +1,7 @@
 "use client";
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { DifficultyLevel } from '@/types/practice-questions';
+import { DifficultyLevel } from '@/types/practice-questions.types';
 
 interface DifficultyBadgeProps {
   difficulty: DifficultyLevel;

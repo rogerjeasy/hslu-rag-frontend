@@ -9,7 +9,13 @@ import { ShortAnswerQuestionView } from './question-types/ShortAnswerQuestionVie
 import { TrueFalseQuestionView } from './question-types/TrueFalseQuestionView';
 import { FillInBlankQuestionView } from './question-types/FillInBlankQuestionView';
 import { MatchingQuestionView } from './question-types/MatchingQuestionView';
-import { QuestionType, Question, QuestionResult } from '@/types/practice-questions';
+import { 
+  QuestionTypeEnum, 
+  QuestionType, 
+  QuestionResult, 
+  UserAnswer,
+  PracticeSessionState
+} from '@/types/practice-questions.types';
 import { usePracticeQuestionsStore } from '@/store/usePracticeQuestionsStore';
 import { HelpCircle, CheckCircle, XCircle, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -31,7 +37,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 interface QuestionRendererProps {
-  question: Question;
+  question: QuestionType;
   index: number;
   total: number;
   showResults?: boolean;
@@ -45,37 +51,45 @@ export function QuestionRenderer({
   showResults = false,
   result
 }: QuestionRendererProps) {
-  const { userAnswers, setUserAnswer } = usePracticeQuestionsStore();
+  // Access the session data from the store which contains userAnswers
+  const { session, submitAnswer } = usePracticeQuestionsStore();
   const [isExplanationOpen, setIsExplanationOpen] = React.useState(false);
   const [isSourcesOpen, setIsSourcesOpen] = React.useState(false);
   const isDesktop = useMediaQuery("(min-width: 768px)");
   
-  // Get the current user answer for this question and handle type safely
-  const userAnswer = userAnswers[question.id];
+  // Get the current user answer for this question safely
+  const userAnswer = session?.userAnswers[question.id]?.answer;
+  
+  // Helper function to convert string to boolean for TrueFalse questions
+  const getBooleanFromAnswer = (answer: unknown): boolean | undefined => {
+    if (typeof answer === 'string') {
+      return answer.toLowerCase() === 'true';
+    }
+    return undefined;
+  };
   
   // Create type-safe handlers for each question type
   const handleSetMultipleChoiceAnswer = (value: string) => {
-    setUserAnswer(question.id, value);
+    submitAnswer(question.id, value);
   };
   
   const handleSetShortAnswer = (value: string) => {
-    setUserAnswer(question.id, value);
+    submitAnswer(question.id, value);
   };
   
   const handleSetTrueFalseAnswer = (value: boolean) => {
-    setUserAnswer(question.id, value);
+    // Convert boolean to string for TrueFalse questions to match UserAnswer type
+    submitAnswer(question.id, value.toString());
   };
   
   const handleSetFillInBlankAnswer = (value: string[]) => {
-    setUserAnswer(question.id, value);
+    submitAnswer(question.id, value);
   };
   
   // For matching questions, we need to serialize the Record<string, string> to a string[]
   // Each entry is stored as [key, value] in the array
   const handleSetMatchingAnswer = (value: Record<string, string>) => {
-    // Convert Record<string, string> to string[] for storage in the Zustand store
-    const serializedValue = Object.entries(value).flat();
-    setUserAnswer(question.id, serializedValue);
+    submitAnswer(question.id, value);
   };
   
   // Adapter functions to convert QuestionResult to type-specific result objects for each view component
@@ -148,7 +162,7 @@ export function QuestionRenderer({
   // Render the appropriate question type component
   const renderQuestionByType = () => {
     switch (question.type) {
-      case QuestionType.MULTIPLE_CHOICE:
+      case QuestionTypeEnum.MULTIPLE_CHOICE:
         return (
           <MultipleChoiceQuestionView
             question={question}
@@ -159,7 +173,7 @@ export function QuestionRenderer({
             disabled={showResults}
           />
         );
-      case QuestionType.SHORT_ANSWER:
+      case QuestionTypeEnum.SHORT_ANSWER:
         return (
           <ShortAnswerQuestionView
             question={question}
@@ -170,18 +184,18 @@ export function QuestionRenderer({
             disabled={showResults}
           />
         );
-      case QuestionType.TRUE_FALSE:
+      case QuestionTypeEnum.TRUE_FALSE:
         return (
           <TrueFalseQuestionView
             question={question}
-            userAnswer={typeof userAnswer === 'boolean' ? userAnswer : undefined}
+            userAnswer={getBooleanFromAnswer(userAnswer)}
             setUserAnswer={handleSetTrueFalseAnswer}
             showResults={showResults}
             result={createTrueFalseResult(result)}
             disabled={showResults}
           />
         );
-      case QuestionType.FILL_IN_BLANK:
+      case QuestionTypeEnum.FILL_IN_BLANK:
         return (
           <FillInBlankQuestionView
             question={question}
@@ -192,11 +206,14 @@ export function QuestionRenderer({
             disabled={showResults}
           />
         );
-      case QuestionType.MATCHING:
-        // For matching questions, we need to deserialize the stored string[] back to Record<string, string>
-        const matchingUserAnswer: Record<string, string> = {};
+      case QuestionTypeEnum.MATCHING:
+        // For matching questions, we need to deserialize the stored data if it's in array format
+        let matchingUserAnswer: Record<string, string> = {};
         
-        if (Array.isArray(userAnswer) && userAnswer.length % 2 === 0) {
+        if (typeof userAnswer === 'object' && !Array.isArray(userAnswer)) {
+          // If it's already in the right format, use it directly
+          matchingUserAnswer = userAnswer as Record<string, string>;
+        } else if (Array.isArray(userAnswer) && userAnswer.length % 2 === 0) {
           // Convert the flat array back to key-value pairs
           for (let i = 0; i < userAnswer.length; i += 2) {
             matchingUserAnswer[userAnswer[i]] = userAnswer[i + 1];
@@ -235,13 +252,20 @@ export function QuestionRenderer({
     </div>
   );
   
+  // Define correct citation type
+  type Citation = {
+    title: string;
+    content_preview: string;
+    page_number?: number;
+  };
+
   // Render source citations content
   const renderSourceCitations = () => (
     <div className="space-y-4">
       <h4 className="font-medium">Source Materials</h4>
-      {question.citations && question.citations.length > 0 ? (
+      {question.citations && Array.isArray(question.citations) && question.citations.length > 0 ? (
         <div className="space-y-4">
-          {question.citations.map((citation, idx) => (
+          {(question.citations as unknown as Citation[]).map((citation: Citation, idx: number) => (
             <div key={idx} className="border rounded-md p-3 text-sm">
               <div className="flex justify-between items-start">
                 <div className="font-medium">{citation.title}</div>
@@ -252,7 +276,7 @@ export function QuestionRenderer({
                 )}
               </div>
               <div className="mt-2 text-muted-foreground italic">
-              &quot;{citation.content_preview}&quot;
+                &quot;{citation.content_preview}&quot;
               </div>
             </div>
           ))}

@@ -10,21 +10,22 @@ import { StudyGuideSettingsForm } from './StudyGuideSettingsForm';
 import { StudyGuideTopicForm } from './StudyGuideTopicForm';
 import { StudyGuideConfirmation } from './StudyGuideConfirmation';
 import { StudyGuideProgress } from './StudyGuideProgress';
+import { LoadingWhileCreating } from './LoadingWhileCreating';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-// import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
 import { useRAGStore } from '@/store/ragStore';
 import { StudyGuideResponse, StudyGuideSummary } from '@/types/study-guide.types';
 
 export function CreateStudyGuide() {
   const router = useRouter();
-  // const { createGuide } = useStudyGuideStore();
   const { courses } = useCourseStore();
   
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isSuccess, setIsSuccess] = useState<boolean>(false);
+  const [createdGuideId, setCreatedGuideId] = useState<string | undefined>(undefined);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -39,6 +40,21 @@ export function CreateStudyGuide() {
   // Update form data
   const updateFormData = (newData: Partial<typeof formData>) => {
     setFormData(prev => ({ ...prev, ...newData }));
+  };
+
+  // Reset the form and states
+  const resetForm = () => {
+    setFormData({
+      topic: '',
+      courseId: '',
+      moduleId: '',
+      detailLevel: DetailLevel.MEDIUM,
+      format: StudyGuideFormat.OUTLINE,
+      includePracticeQuestions: false,
+    });
+    setCurrentStep(0);
+    setIsSuccess(false);
+    setCreatedGuideId(undefined);
   };
 
   // Handle step navigation
@@ -86,6 +102,9 @@ export function CreateStudyGuide() {
             : undefined;
       
       if (guideId) {
+        // Set the created guide ID for use in the success dialog
+        setCreatedGuideId(guideId);
+        
         // Get the studyGuideStore to update state
         const studyGuideStore = useStudyGuideStore.getState();
         
@@ -115,8 +134,8 @@ export function CreateStudyGuide() {
           filteredGuides: [newGuide, ...studyGuideStore.filteredGuides]
         });
         
-        // Navigate to the specific guide page
-        router.push(`/study-guides/${guideId}`);
+        // Set success state to show the success dialog
+        setIsSuccess(true);
       } else {
         // Fallback to the main study guides page
         console.warn('No guide ID found in response, redirecting to main page');
@@ -237,6 +256,15 @@ export function CreateStudyGuide() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Loading and Success Dialog */}
+      <LoadingWhileCreating
+        isLoading={isSubmitting}
+        isSuccess={isSuccess}
+        studyGuideId={createdGuideId}
+        studyGuideTopic={formData.topic}
+        onReset={resetForm}
+      />
     </div>
   );
 }

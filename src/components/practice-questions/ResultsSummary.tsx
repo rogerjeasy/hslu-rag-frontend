@@ -1,4 +1,4 @@
-"use strict";
+"use client";
 import React from 'react';
 import { 
   Card, 
@@ -9,7 +9,7 @@ import {
   CardTitle 
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { SubmissionResult } from '@/types/practice-questions';
+import { SubmissionResult } from '@/types/practice-questions.types';
 import { 
   CheckCircle, 
   XCircle, 

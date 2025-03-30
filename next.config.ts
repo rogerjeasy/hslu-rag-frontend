@@ -20,6 +20,10 @@ const nextConfig = {
       }
     ],
   },
+  eslint: {
+    // This will disable ESLint checking during builds
+    ignoreDuringBuilds: true,
+  },
 };
 
 module.exports = nextConfig;

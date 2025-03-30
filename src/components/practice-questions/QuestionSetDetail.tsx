@@ -3,7 +3,6 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { QuestionRenderer } from './QuestionRenderer';
 import { Button } from '@/components/ui/button';
-import { usePracticeQuestionsStore } from '@/store/usePracticeQuestionsStore';
 import { Progress } from '@/components/ui/progress';
 import { 
   ListChecks,
@@ -11,8 +10,8 @@ import {
   Check,
   AlertCircle,
   Loader2,
-  ChevronLeftIcon,
-  ChevronRightIcon
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { 
   Breadcrumb,
@@ -38,10 +37,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  // DialogTrigger,
 } from '@/components/ui/dialog';
-// import { ScrollArea } from '@/components/ui/scroll-area';
-import { QuestionResult } from '@/types/practice-questions';
+import { DifficultyLevel, QuestionResult, QuestionType } from '@/types/practice-questions.types';
+import { useQuestionSetDetailAdapter } from '@/store/adapters/questionSetDetailAdapter';
 
 interface CourseInfo {
   id: string;
@@ -58,6 +56,8 @@ export function QuestionSetDetail({
   courseInfo
 }: QuestionSetDetailProps) {
   const router = useRouter();
+  
+  // Use the adapter instead of directly accessing the store
   const { 
     currentQuestionSet, 
     fetchQuestionSet,
@@ -68,7 +68,7 @@ export function QuestionSetDetail({
     isLoading,
     isSubmitting,
     error
-  } = usePracticeQuestionsStore();
+  } = useQuestionSetDetailAdapter();
   
   const [currentQuestionIndex, setCurrentQuestionIndex] = React.useState(0);
   const [isSubmitDialogOpen, setIsSubmitDialogOpen] = React.useState(false);
@@ -100,7 +100,7 @@ export function QuestionSetDetail({
     // Get appropriate alert variants based on error code
     const getAlertVariant = () => {
       // Network errors or server errors should show as destructive
-      if (error.code === 0 || error.code >= 500) return "destructive";
+      if (error.code === 0 || (error.code && error.code >= 500)) return "destructive";
       // Auth errors should be highlighted differently
       if (error.code === 401 || error.code === 403) return "warning";
       // Default to a standard error appearance
@@ -216,12 +216,12 @@ export function QuestionSetDetail({
   const isReviewMode = !!submissionResults;
   
   // Get the result for the current question if in review mode
-  const currentQuestionResult = isReviewMode 
+  const currentQuestionResult = isReviewMode && submissionResults
     ? submissionResults.question_results.find(r => r.question_id === currentQuestion.id)
     : undefined;
   
   // Calculate score if in review mode
-  const score = isReviewMode
+  const score = isReviewMode && submissionResults
     ? {
         correctCount: submissionResults.correct_answers,
         percentage: submissionResults.score_percentage || 0,
@@ -253,7 +253,9 @@ export function QuestionSetDetail({
             )}
           </div>
           <div className="flex items-center gap-2">
-            <DifficultyBadge difficulty={currentQuestionSet.difficulty} />
+            <DifficultyBadge 
+              difficulty={currentQuestionSet.difficulty as DifficultyLevel} 
+            />
             
             {courseInfo && (
               <span className="text-sm text-muted-foreground">
@@ -292,7 +294,7 @@ export function QuestionSetDetail({
         index={currentQuestionIndex}
         total={totalQuestions}
         showResults={isReviewMode}
-        result={currentQuestionResult}
+        result={currentQuestionResult as QuestionResult}
       />
       
       {/* Navigation buttons */}
@@ -302,7 +304,7 @@ export function QuestionSetDetail({
           onClick={goToPreviousQuestion}
           disabled={currentQuestionIndex === 0}
         >
-          <ChevronLeftIcon className="h-4 w-4 mr-2" />
+          <ChevronLeft className="h-4 w-4 mr-2" />
           Previous
         </Button>
         
@@ -339,7 +341,7 @@ export function QuestionSetDetail({
           disabled={currentQuestionIndex === totalQuestions - 1}
         >
           Next
-          <ChevronRightIcon className="h-4 w-4 ml-2" />
+          <ChevronRight className="h-4 w-4 ml-2" />
         </Button>
       </div>
       
@@ -351,7 +353,7 @@ export function QuestionSetDetail({
           const isAnswered = !!userAnswers[q.id];
           
           // Fixed: Properly retrieve and handle the question result
-          let questionResult: QuestionResult | undefined;
+          let questionResult: { is_correct: boolean; requires_review?: boolean } | undefined;
           if (isReviewMode && submissionResults) {
             questionResult = submissionResults.question_results.find(
               r => r.question_id === q.id

@@ -1,296 +1,217 @@
 "use client";
+
 import React from 'react';
-import { QuestionSetCard } from './QuestionSetCard';
-import { Button } from '@/components/ui/button';
-import { usePracticeQuestionsStore } from '@/store/usePracticeQuestionsStore';
-import { Plus, RefreshCw, Search, AlertCircle, AlertTriangle } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { useQuestionSetAdapter, mapToQuestionSetSummary, StoreQuestionSet } from '@/hooks/useQuestionSetAdapter';
+import QuestionSetHeader from './question-set/QuestionSetHeader';
+import QuestionSetSearchBar from './question-set/QuestionSetSearchBar';
 import { QuestionSetFilters } from './QuestionSetFilters';
-import Link from 'next/link';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import QuestionSetGrid from './question-set/QuestionSetGrid';
+import QuestionSetEmptyState from './question-set/QuestionSetEmptyState';
+import QuestionSetLoadingState from './question-set/QuestionSetLoadingState';
+import QuestionSetErrorState from './question-set/QuestionSetErrorState';
+import { QuestionSetSummary } from '@/types/practice-questions.types';
+import { usePracticeQuestionsStore } from '@/store/usePracticeQuestionsStore';
 
 interface QuestionSetListProps {
   courses: { id: string; name: string; color: string }[];
 }
 
 export function QuestionSetList({ courses }: QuestionSetListProps) {
+  // Use adapter to access store functionality
   const {
     questionSets,
     isLoading,
     error,
     fetchQuestionSets,
+    clearError,
     courseFilter,
     difficultyFilter,
-    typeFilter,
-    clearError
-  } = usePracticeQuestionsStore();
+    typeFilter
+  } = useQuestionSetAdapter();
 
   const [searchTerm, setSearchTerm] = React.useState('');
   const [isRefreshing, setIsRefreshing] = React.useState(false);
+  const [initialFetchDone, setInitialFetchDone] = React.useState(false);
 
-  // Load question sets on component mount
+  // Get direct access to the store for filtering
+  const filterQuestionSets = usePracticeQuestionsStore(state => state.filterQuestionSets);
+
+  // Stable reference to courses to prevent unnecessary re-renders
+  const coursesRef = React.useRef(courses);
   React.useEffect(() => {
-    fetchQuestionSets(courseFilter || undefined);
-  }, [fetchQuestionSets, courseFilter]);
+    coursesRef.current = courses;
+  }, [courses]);
 
+  // Memoize the course lookup function with a stable reference
+  const getCourseInfo = React.useCallback((courseId?: string) => {
+    if (!courseId) return null;
+    return coursesRef.current.find(course => course.id === courseId) || null;
+  }, []); // Empty dependency array since we're using ref
+
+  // Initial data load - only runs once on component mount
+  React.useEffect(() => {
+    let isMounted = true;
+    
+    const loadInitialData = async () => {
+      if (!initialFetchDone && !isRefreshing) {
+        try {
+          setIsRefreshing(true);
+          await fetchQuestionSets(courseFilter || undefined);
+          if (isMounted) {
+            setInitialFetchDone(true);
+          }
+        } catch (error) {
+          if (isMounted) {
+            console.error('Failed to fetch initial question sets:', error);
+          }
+        } finally {
+          if (isMounted) {
+            setIsRefreshing(false);
+          }
+        }
+      }
+    };
+    
+    loadInitialData();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [fetchQuestionSets, initialFetchDone, isRefreshing, courseFilter]);
+
+  React.useEffect(() => {
+    // Only apply filters if we have data and the initial fetch is done
+    if (initialFetchDone && questionSets.length > 0) {
+      // Based on your store implementation, filterQuestionSets only accepts searchTerm and courseId
+      filterQuestionSets(searchTerm, courseFilter || undefined);
+      
+      // If you need to filter by difficulty and type, you'll need to implement that here
+      // or update your store's filterQuestionSets function to accept these arguments
+    }
+  }, [searchTerm, courseFilter, difficultyFilter, typeFilter, initialFetchDone, questionSets.length, filterQuestionSets]);
+  
   // Handle refresh button click
-  const handleRefresh = async () => {
+  const handleRefresh = React.useCallback(async () => {
+    // Set a timeout to ensure isRefreshing is reset even if the fetch operation fails
+    let timeoutId: NodeJS.Timeout;
+    
     setIsRefreshing(true);
+    
+    // Set a safety timeout to ensure the spinner stops after a maximum time
+    timeoutId = setTimeout(() => {
+      setIsRefreshing(false);
+    }, 10000); // 10 seconds max for the refresh operation
+    
     try {
       await fetchQuestionSets(courseFilter || undefined);
-    } finally {
+      
+      // Clear the safety timeout if the fetch succeeds
+      clearTimeout(timeoutId);
       setIsRefreshing(false);
+    } catch (error) {
+      console.error("Error refreshing question sets:", error);
+      
+      // Clear the safety timeout if there's an error
+      clearTimeout(timeoutId);
+      setIsRefreshing(false);
+      
+      // Optionally show a toast or error message here
     }
-  };
+  }, [fetchQuestionSets, courseFilter]);
 
   // Handle retry after error
-  const handleRetry = () => {
+  const handleRetry = React.useCallback(() => {
     clearError();
-    fetchQuestionSets(courseFilter || undefined);
-  };
+    setIsRefreshing(true);
+    fetchQuestionSets(courseFilter || undefined)
+      .finally(() => setIsRefreshing(false));
+  }, [clearError, fetchQuestionSets, courseFilter]);
 
-  // Filter the question sets based on search and filters
-  const filteredQuestionSets = React.useMemo(() => {
-    return questionSets.filter(set => {
-      // Apply search filter
-      if (searchTerm && !set.title.toLowerCase().includes(searchTerm.toLowerCase())) {
-        return false;
-      }
-      
-      // Apply difficulty filter
-      if (difficultyFilter && set.difficulty !== difficultyFilter) {
-        return false;
-      }
-      
-      // Apply question type filter
-      if (typeFilter && !set.types.includes(typeFilter)) {
-        return false;
-      }
-      
-      return true;
-    });
-  }, [questionSets, searchTerm, difficultyFilter, typeFilter]);
+  // Handle search term changes
+  const handleSearchChange = React.useCallback((value: string) => {
+    setSearchTerm(value);
+  }, []);
 
-  // Get the course info for each question set
-  const getCourseInfo = (courseId: string) => {
-    return courses.find(course => course.id === courseId) || null;
-  };
-
-  // Render loading skeletons
-  if (isLoading && !isRefreshing && questionSets.length === 0) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold tracking-tight">Practice Questions</h2>
-          <Button disabled>
-            <Plus className="h-4 w-4 mr-2" />
-            Create New
-          </Button>
-        </div>
-        
-        <QuestionSetFilters courses={courses} />
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {Array.from({ length: 6 }).map((_, index) => (
-            <div key={index} className="border rounded-lg p-6 space-y-4">
-              <Skeleton className="h-6 w-2/3" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-3/4" />
-              <div className="flex gap-2 pt-2">
-                <Skeleton className="h-8 w-16" />
-                <Skeleton className="h-8 w-16" />
-              </div>
-              <Skeleton className="h-10 w-full mt-4" />
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  // Handle different error types with customized UI
-  if (error && !isRefreshing) {
-    const isAuthError = error.code === 401 || error.code === 403;
-    const isNotFoundError = error.code === 404;
+  // Pre-map the question sets once to avoid repeated mapping in the render function
+  const mappedQuestionSets = React.useMemo(() => {
+    if (!Array.isArray(questionSets) || questionSets.length === 0) {
+      return [];
+    }
     
+    return questionSets
+      .filter(Boolean)
+      .map(questionSet => {
+        try {
+          return mapToQuestionSetSummary(questionSet as StoreQuestionSet);
+        } catch (err) {
+          console.error("Error mapping question set:", err);
+          return null;
+        }
+      })
+      .filter(Boolean) as (QuestionSetSummary | null)[];
+  }, [questionSets]);
+
+  // Memoized props for child components to prevent unnecessary re-renders
+  const errorStateProps = React.useMemo(() => ({
+    courses,
+    onRetry: handleRetry,
+    onRefresh: handleRefresh,
+    mappedQuestionSets,
+    getCourseInfo
+  }), [courses, handleRetry, handleRefresh, mappedQuestionSets, getCourseInfo]);
+
+  const searchBarProps = React.useMemo(() => ({
+    searchTerm,
+    onSearchChange: handleSearchChange,
+    onRefresh: handleRefresh,
+    isRefreshing
+  }), [searchTerm, handleSearchChange, handleRefresh, isRefreshing]);
+
+  const emptyStateProps = React.useMemo(() => ({
+    searchTerm,
+    courseFilter,
+    difficultyFilter,
+    typeFilter
+  }), [searchTerm, courseFilter, difficultyFilter, typeFilter]);
+
+  // Render loading state
+  if ((isLoading || !initialFetchDone) && !isRefreshing && (!questionSets || questionSets.length === 0)) {
+    return <QuestionSetLoadingState courses={courses} />;
+  }
+
+  // Render error state
+  if (error && !isRefreshing) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold tracking-tight">Practice Questions</h2>
-          <Button asChild>
-            <Link href="/practice-questions/create">
-              <Plus className="h-4 w-4 mr-2" />
-              Create New
-            </Link>
-          </Button>
-        </div>
-        
-        {/* Auth Error UI */}
-        {isAuthError && (
-          <div className="rounded-md border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-800 dark:bg-yellow-950">
-            <div className="flex items-start">
-              <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400 mt-0.5 mr-2" />
-              <div>
-                <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-300">
-                  Authentication Error
-                </h3>
-                <div className="mt-2 text-sm text-yellow-700 dark:text-yellow-400">
-                  <p className="mb-4">{error.message}</p>
-                  {process.env.NODE_ENV === 'development' && error.detail && (
-                    <p className="text-sm opacity-80 mb-4">Details: {error.detail}</p>
-                  )}
-                  <Button variant="outline" size="sm" onClick={handleRetry}>
-                    Try Again
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        {/* 404 Not Found Error UI - More friendly, non-destructive styling */}
-        {isNotFoundError && (
-          <div className="rounded-md border border-blue-100 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950">
-            <div className="flex items-start">
-              <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 mr-2" />
-              <div>
-                <h3 className="text-sm font-medium text-blue-800 dark:text-blue-300">
-                  Resource Not Available
-                </h3>
-                <div className="mt-2 text-sm text-blue-700 dark:text-blue-400">
-                  <p className="mb-4">
-                    {error.message || "The requested practice questions could not be found."}
-                  </p>
-                  <p className="mb-4">This might happen if the resource was recently deleted or if there was a synchronization issue.</p>
-                  <div className="flex flex-wrap gap-2">
-                    <Button variant="outline" size="sm" onClick={handleRefresh}>
-                      <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-                      Refresh
-                    </Button>
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href="/practice-questions/create">
-                        <Plus className="h-3.5 w-3.5 mr-1.5" />
-                        Create New
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        {/* Other Errors UI - Destructive styling */}
-        {!isAuthError && !isNotFoundError && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Error Loading Practice Questions</AlertTitle>
-            <AlertDescription>
-              <p className="mb-4">{error.message}</p>
-              {process.env.NODE_ENV === 'development' && error.detail && (
-                <p className="text-sm opacity-80 mb-4">Details: {error.detail}</p>
-              )}
-              <Button variant="outline" size="sm" onClick={handleRetry}>
-                Try Again
-              </Button>
-            </AlertDescription>
-          </Alert>
-        )}
-        
-        {/* Still show filters in case they want to change them before retrying */}
-        <QuestionSetFilters courses={courses} />
-        
-        {/* For 404 errors, still show any available question sets rather than hiding everything */}
-        {isNotFoundError && questionSets.length > 0 && (
-          <>
-            <div className="mt-8 mb-4">
-              <h3 className="text-lg font-medium">Available Question Sets</h3>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredQuestionSets.map((questionSet) => (
-                <QuestionSetCard
-                  key={questionSet.id}
-                  questionSet={questionSet}
-                  courseInfo={getCourseInfo(questionSet.courseId)}
-                />
-              ))}
-            </div>
-          </>
-        )}
-      </div>
+      <QuestionSetErrorState 
+        error={error}
+        {...errorStateProps}
+      />
     );
   }
 
+  // Render main content
   return (
     <div className="space-y-6">
-      {/* Header and Create button */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h2 className="text-2xl font-bold tracking-tight">Practice Questions</h2>
-        <Button asChild>
-          <Link href="/practice-questions/create">
-            <Plus className="h-4 w-4 mr-2" />
-            Create New
-          </Link>
-        </Button>
-      </div>
+      {/* Header */}
+      <QuestionSetHeader />
       
       {/* Search and filters */}
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search practice questions..."
-              className="pl-8"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <Button 
-            variant="outline" 
-            size="icon" 
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-          >
-            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            <span className="sr-only">Refresh</span>
-          </Button>
-        </div>
-        
+        <QuestionSetSearchBar {...searchBarProps} />
         <QuestionSetFilters courses={courses} />
       </div>
       
       {/* Display question sets or empty state */}
-      {filteredQuestionSets.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredQuestionSets.map((questionSet) => (
-            <QuestionSetCard
-              key={questionSet.id}
-              questionSet={questionSet}
-              courseInfo={getCourseInfo(questionSet.courseId)}
-            />
-          ))}
-        </div>
+      {mappedQuestionSets.length > 0 ? (
+        <QuestionSetGrid 
+          questionSets={mappedQuestionSets}
+          courseInfo={getCourseInfo}
+        />
       ) : (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <div className="rounded-full bg-muted p-3 mb-4">
-            <Search className="h-6 w-6 text-muted-foreground" />
-          </div>
-          <h3 className="text-lg font-medium mb-2">No Practice Questions Found</h3>
-          <p className="text-muted-foreground max-w-md mb-6">
-            {searchTerm || courseFilter || difficultyFilter || typeFilter
-              ? "No practice questions match your current filters. Try adjusting your search criteria."
-              : "You haven't created any practice question sets yet."}
-          </p>
-          <Button asChild>
-            <Link href="/practice-questions/create">
-              <Plus className="h-4 w-4 mr-2" />
-              Create New Practice Questions
-            </Link>
-          </Button>
-        </div>
+        <QuestionSetEmptyState {...emptyStateProps} />
       )}
     </div>
   );
 }
+
+export default React.memo(QuestionSetList);

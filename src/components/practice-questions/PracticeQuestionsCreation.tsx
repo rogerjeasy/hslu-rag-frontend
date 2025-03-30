@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState } from 'react';
-import { DifficultyLevel, QuestionType } from '@/types/practice-questions';
+import { DifficultyLevel, QuestionTypeEnum } from '@/types/practice-questions.types';
 import { usePracticeQuestionsStore } from '@/store/usePracticeQuestionsStore';
+import { useRAGStore } from '@/store/ragStore';
 import { useRouter } from 'next/navigation';
 import { 
   Card, 
@@ -31,6 +32,7 @@ import TopicInput from './creation/TopicInput';
 import CountSelector from './creation/CountSelector';
 import CourseSelector from './creation/CourseSelector';
 import CreationSummary from './creation/CreationSummary';
+import { PracticeQuestionsRequest } from '@/types/rag.types';
 
 interface PracticeQuestionsCreationProps {
   courses: {
@@ -43,7 +45,11 @@ interface PracticeQuestionsCreationProps {
 export function PracticeQuestionsCreation({ courses }: PracticeQuestionsCreationProps) {
   const router = useRouter();
   const { toast } = useToast();
-  const { createQuestionSet, isCreating } = usePracticeQuestionsStore();
+  
+  // Replace direct practiceQuestionsStore usage with RAG store for generation
+  // and keep practiceQuestionsStore for state updates
+  const { isCreating } = usePracticeQuestionsStore();
+  const { generatePracticeQuestions, isLoading: isGenerating } = useRAGStore();
   
   // Form state
   const [topic, setTopic] = useState('');
@@ -51,9 +57,9 @@ export function PracticeQuestionsCreation({ courses }: PracticeQuestionsCreation
   const [moduleId, setModuleId] = useState<string | undefined>(undefined);
   const [questionCount, setQuestionCount] = useState(5);
   const [difficulty, setDifficulty] = useState<DifficultyLevel>(DifficultyLevel.MEDIUM);
-  const [selectedTypes, setSelectedTypes] = useState<QuestionType[]>([
-    QuestionType.MULTIPLE_CHOICE,
-    QuestionType.SHORT_ANSWER
+  const [selectedTypes, setSelectedTypes] = useState<QuestionTypeEnum[]>([
+    QuestionTypeEnum.MULTIPLE_CHOICE,
+    QuestionTypeEnum.SHORT_ANSWER
   ]);
   
   // Validation state
@@ -115,25 +121,50 @@ export function PracticeQuestionsCreation({ courses }: PracticeQuestionsCreation
     setFormErrors({});
     
     try {
-      // Submit the form
-      const questionSetId = await createQuestionSet({
+      // Create the request for the RAG service with properly typed parameters
+      const ragRequest: PracticeQuestionsRequest = {
         topic,
         courseId,
         moduleId,
         questionCount,
-        difficulty,
-        questionTypes: selectedTypes
-      });
+        // Cast difficulty as expected type
+        difficulty: difficulty.toString() as "basic" | "medium" | "advanced",
+        questionTypes: selectedTypes.map(type => type.toString())
+      };
       
-      if (questionSetId) {
+      // Add includeExplanations property separately as it's not part of PracticeQuestionsRequest
+      const requestWithExplanations = {
+        ...ragRequest,
+        includeExplanations: true
+      };
+      
+      // Generate practice questions using the RAG store
+      const response = await generatePracticeQuestions(ragRequest);
+      
+      // Check if the response contains the necessary data
+      if (response) {
+        // Update the practice questions store with the generated questions
+        const { fetchQuestionSets } = usePracticeQuestionsStore.getState();
+        
+        // Refresh the question sets to include the newly created one
+        await fetchQuestionSets();
+        
         toast({
           title: "Success!",
           description: "Your practice questions have been created.",
           duration: 5000,
         });
         
-        // Navigate to the created question set
-        router.push(`/practice-questions/${questionSetId}`);
+        // Navigate to the practice questions page or directly to the created set
+        // If the response metadata includes an ID
+        if (response.meta && response.meta.id) {
+          router.push(`/practice-questions/${response.meta.id}`);
+        } else {
+          // Otherwise, just go to the practice questions list
+          router.push('/practice-questions');
+        }
+      } else {
+        throw new Error("Failed to generate questions: Invalid response");
       }
     } catch (error) {
       console.error("Failed to create question set:", error);
@@ -147,7 +178,7 @@ export function PracticeQuestionsCreation({ courses }: PracticeQuestionsCreation
   };
   
   // Handler for type selection
-  const handleTypeToggle = (type: QuestionType) => {
+  const handleTypeToggle = (type: QuestionTypeEnum) => {
     setSelectedTypes(prev => {
       // If the type is already selected, remove it
       if (prev.includes(type)) {
@@ -197,7 +228,7 @@ export function PracticeQuestionsCreation({ courses }: PracticeQuestionsCreation
     setModuleId(undefined);
     setQuestionCount(5);
     setDifficulty(DifficultyLevel.MEDIUM);
-    setSelectedTypes([QuestionType.MULTIPLE_CHOICE, QuestionType.SHORT_ANSWER]);
+    setSelectedTypes([QuestionTypeEnum.MULTIPLE_CHOICE, QuestionTypeEnum.SHORT_ANSWER]);
     setFormErrors({});
     setCurrentStep(0);
   };
@@ -246,35 +277,6 @@ export function PracticeQuestionsCreation({ courses }: PracticeQuestionsCreation
     }
     return true;
   };
-  
-//   // Question type info with icons, descriptions, and colors for display purposes
-//   const questionTypeInfo = [
-//     {
-//       type: QuestionType.MULTIPLE_CHOICE,
-//       label: 'Multiple Choice',
-//       badgeColor: 'bg-blue-100 text-blue-700'
-//     },
-//     {
-//       type: QuestionType.SHORT_ANSWER,
-//       label: 'Short Answer',
-//       badgeColor: 'bg-purple-100 text-purple-700'
-//     },
-//     {
-//       type: QuestionType.TRUE_FALSE,
-//       label: 'True/False',
-//       badgeColor: 'bg-green-100 text-green-700'
-//     },
-//     {
-//       type: QuestionType.FILL_IN_BLANK,
-//       label: 'Fill in Blank',
-//       badgeColor: 'bg-amber-100 text-amber-700'
-//     },
-//     {
-//       type: QuestionType.MATCHING,
-//       label: 'Matching',
-//       badgeColor: 'bg-rose-100 text-rose-700'
-//     },
-//   ];
     
   // Render step content
   const renderStepContent = () => {
@@ -423,6 +425,9 @@ export function PracticeQuestionsCreation({ courses }: PracticeQuestionsCreation
     }
   };
   
+  // Determine if we're in a loading state
+  const isProcessing = isCreating || isGenerating;
+  
   return (
     <div className="w-full max-w-5xl mx-auto px-4 py-6">
       <div className="mb-8">
@@ -508,7 +513,7 @@ export function PracticeQuestionsCreation({ courses }: PracticeQuestionsCreation
               type="button"
               variant="ghost"
               onClick={resetForm}
-              disabled={isCreating}
+              disabled={isProcessing}
               className="text-muted-foreground"
             >
               Reset Form
@@ -529,10 +534,10 @@ export function PracticeQuestionsCreation({ courses }: PracticeQuestionsCreation
             ) : (
               <Button
                 type="submit"
-                disabled={isCreating || !isCurrentStepValid()}
+                disabled={isProcessing || !isCurrentStepValid()}
                 className="min-w-[160px] bg-primary hover:bg-primary/90 shadow-md"
               >
-                {isCreating ? (
+                {isProcessing ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Creating...

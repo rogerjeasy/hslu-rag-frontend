@@ -2,16 +2,16 @@
 import React from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { ShortAnswerQuestion } from '@/types/practice-questions';
+import { ShortAnswerQuestionType } from '@/types/practice-questions.types';
 import { BookOpen } from 'lucide-react';
-import { 
-  Collapsible, 
-  CollapsibleContent, 
-  CollapsibleTrigger 
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger
 } from '@/components/ui/collapsible';
 
 interface ShortAnswerQuestionViewProps {
-  question: ShortAnswerQuestion;
+  question: ShortAnswerQuestionType;
   userAnswer: string | undefined;
   setUserAnswer: (value: string) => void;
   showResults?: boolean;
@@ -33,11 +33,11 @@ export function ShortAnswerQuestionView({
   disabled = false
 }: ShortAnswerQuestionViewProps) {
   const [isAnswerVisible, setIsAnswerVisible] = React.useState(false);
-
+  
   const handleValueChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setUserAnswer(e.target.value);
   };
-
+  
   return (
     <div className="space-y-4">
       <Textarea
@@ -47,7 +47,6 @@ export function ShortAnswerQuestionView({
         className="min-h-[120px]"
         disabled={disabled}
       />
-
       {showResults && (
         <Collapsible
           open={isAnswerVisible}
@@ -72,7 +71,6 @@ export function ShortAnswerQuestionView({
           </CollapsibleContent>
         </Collapsible>
       )}
-
       {showResults && result?.requires_review && (
         <div className="p-4 rounded-md bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800">
           <h4 className="font-medium text-yellow-800 dark:text-yellow-300 mb-1">Requires Manual Review</h4>

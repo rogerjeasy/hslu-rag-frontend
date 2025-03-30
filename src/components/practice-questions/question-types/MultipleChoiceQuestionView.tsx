@@ -3,10 +3,10 @@ import React from 'react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { CheckCircle2, XCircle } from 'lucide-react';
-import { MultipleChoiceQuestion } from '@/types/practice-questions';
+import { MultipleChoiceQuestionType } from '@/types/practice-questions.types';
 
 interface MultipleChoiceQuestionViewProps {
-  question: MultipleChoiceQuestion;
+  question: MultipleChoiceQuestionType;
   userAnswer: string | undefined;
   setUserAnswer: (value: string) => void;
   showResults?: boolean;
@@ -24,13 +24,13 @@ export function MultipleChoiceQuestionView({
   userAnswer,
   setUserAnswer,
   showResults = false,
-  // result,
+  result,
   disabled = false
 }: MultipleChoiceQuestionViewProps) {
   const handleValueChange = (value: string) => {
     setUserAnswer(value);
   };
-
+  
   return (
     <RadioGroup
       value={userAnswer}
@@ -41,7 +41,7 @@ export function MultipleChoiceQuestionView({
       {question.options.map((option) => {
         // Determine if this option is the correct one when showing results
         const isCorrectOption = showResults && option.isCorrect;
-        
+       
         // Determine if this option was incorrectly selected by the user
         const isIncorrectSelection = showResults && userAnswer === option.id && !option.isCorrect;
        
@@ -78,10 +78,10 @@ export function MultipleChoiceQuestionView({
                 )}
               </Label>
              
-              {/* Show explanation for this option when showing results */}
-              {showResults && option.explanation && option.isCorrect && (
+              {/* Show explanation from the question when this is the correct option */}
+              {showResults && option.isCorrect && (
                 <div className="mt-2 text-sm text-muted-foreground">
-                  {option.explanation}
+                  {question.explanation}
                 </div>
               )}
             </div>

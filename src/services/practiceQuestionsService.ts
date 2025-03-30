@@ -1,213 +1,199 @@
+// services/practiceQuestionsService.ts
 import { api, handleError } from "@/helpers/api";
-import {
-  QuestionSet,
-  QuestionSetSummary,
-  CreatePracticeQuestionsRequest,
-  SubmitAnswersRequest,
-  SubmissionResult
-} from '@/types/practice-questions';
-
-// Base URL for all practice questions endpoints
-const baseUrl = '/practice-questions';
-
-/**
- * Service for handling practice questions related API requests
- */
-export const practiceQuestionsService = {
-  /**
-   * Get all practice question sets
-   * @param courseId Optional course ID to filter by
-   * @returns List of question set summaries
-   * @throws ApiError with standardized format (except for 404, which returns [])
-   */
-  async getQuestionSets(courseId?: string): Promise<QuestionSetSummary[]> {
+import { 
+    PracticeQuestionSetResponse,
+    PracticeQuestionsSetType,
+    QuestionType,
+    QuestionTypeEnum,
+    transformPracticeQuestionResponse
+  } from '@/types/practice-questions.types';
+  
+  class PracticeQuestionsService {
+    private readonly API_URL = '/content';
+    // Store all currently fetched questions
+    private currentQuestions: Record<string, QuestionType[]> = {};
+  
+    // Fetch all practice question sets for a user
+    async fetchPracticeQuestionSets(): Promise<PracticeQuestionsSetType[]> {
+        try {
+          const response = await api.get(`${this.API_URL}/practice-questions`);
+          
+          // If the API returns an array of the new response format, transform each item
+          if (response.data && Array.isArray(response.data)) {
+            if (response.data.length > 0 && 'meta' in response.data[0]) {
+              // Response is in the new format, transform each item
+              return response.data.map((item: PracticeQuestionSetResponse) => 
+                transformPracticeQuestionResponse(item)
+              );
+            }
+            // Response is already in the expected format
+            return response.data;
+          }
+          
+          return [];
+        } catch (error) {
+          console.error('Failed to fetch practice question sets:', error);
+          throw error;
+        }
+      }
+  
+    
+      // Fetch a specific practice question set by ID
+async fetchPracticeQuestionSet(id: string): Promise<PracticeQuestionsSetType> {
     try {
-      const params = courseId ? { course_id: courseId } : {};
-      const response = await api.get(baseUrl, { params });
-      return response.data;
+      // API call returns PracticeQuestionSetResponse format
+      const response = await api.get(`${this.API_URL}/practice-questions/${id}`);
+      
+      // Development-only logs - force immediate output
+      if (process.env.NODE_ENV !== 'production') {
+        console.group(`--- fetchPracticeQuestionSet(${id}) ---`);
+        console.log('Raw API response:', JSON.stringify(response.data, null, 2));
+        console.log('Response has meta field:', response.data && 'meta' in response.data);
+        
+        if (response.data) {
+          console.log('Response keys:', Object.keys(response.data));
+          
+          if ('meta' in response.data && response.data.meta) {
+            console.log('Meta keys:', Object.keys(response.data.meta));
+            
+            if ('questions' in response.data.meta) {
+              console.log('Questions is array:', Array.isArray(response.data.meta.questions));
+              console.log('Questions length:', Array.isArray(response.data.meta.questions) ? 
+                response.data.meta.questions.length : 'not an array');
+              
+              // Store questions in our cache
+              if (Array.isArray(response.data.meta.questions)) {
+                this.currentQuestions[id] = response.data.meta.questions;
+              }
+            } else {
+              console.warn('Meta is missing questions field');
+            }
+          }
+        }
+        console.groupEnd();
+      } else {
+        // For production, still store the questions
+        if (response.data && 
+            response.data.meta && 
+            Array.isArray(response.data.meta.questions)) {
+          this.currentQuestions[id] = response.data.meta.questions;
+        }
+      }
+      
+      // Transform the raw response into our standardized format
+      if (response.data && 'meta' in response.data) {
+        // Response is in PracticeQuestionSetResponse format and needs transformation
+        return transformPracticeQuestionResponse(response.data as PracticeQuestionSetResponse);
+      } else if (response.data && 'questions' in response.data) {
+        // Response is already in PracticeQuestionsSetType format
+        return response.data as PracticeQuestionsSetType;
+      } else {
+        throw new Error('Invalid response format: missing required fields');
+      }
     } catch (error) {
-      // Convert to our standardized ApiError
-      const apiError = handleError(error);
-      
-      // For 404, return empty array instead of throwing an error
-      if (apiError.status === 404) {
-        console.info(`No practice questions found${courseId ? ` for course ${courseId}` : ''} - returning empty array`);
-        return [];
-      }
-      
-      // Enhanced error messages based on status codes
-      if (apiError.status === 401) {
-        apiError.message = "Your session has expired. Please log in again to view your question sets.";
-      } else if (apiError.status === 403) {
-        apiError.message = "You don't have permission to access these question sets.";
-      } else if (apiError.status >= 500) {
-        apiError.message = "We're having trouble retrieving your question sets. Please try again later.";
-      }
-      
-      throw apiError;
-    }
-  },
-
-  /**
-   * Get a specific practice question set by ID
-   * @param questionSetId The ID of the question set to retrieve
-   * @returns The complete question set with all questions
-   * @throws ApiError with standardized format
-   */
-  async getQuestionSet(questionSetId: string): Promise<QuestionSet> {
-    try {
-      const response = await api.get(`${baseUrl}/${questionSetId}`);
-      return response.data;
-    } catch (error) {
-      const apiError = handleError(error);
-      
-      // Add more specific messages for different error cases
-      if (apiError.status === 404) {
-        apiError.message = "This question set no longer exists or is not available.";
-        apiError.detail = `The question set with ID "${questionSetId}" could not be found.`;
-      } else if (apiError.status === 401) {
-        apiError.message = "Your session has expired. Please log in again to view this question set.";
-      } else if (apiError.status === 403) {
-        apiError.message = "You don't have permission to access this question set.";
-      } else if (apiError.status >= 500) {
-        apiError.message = "We're having trouble retrieving this question set. Please try again later.";
-      }
-      
-      throw apiError;
-    }
-  },
-
-  /**
-   * Create a new practice question set
-   * @param data The data for creating the question set
-   * @returns The created question set summary
-   * @throws ApiError with standardized format
-   */
-  async createQuestionSet(data: CreatePracticeQuestionsRequest): Promise<{ id: string; title: string; createdAt: string }> {
-    try {
-      const response = await api.post(baseUrl, data);
-      return response.data;
-    } catch (error) {
-      const apiError = handleError(error);
-      
-      // Enhanced error messages based on status codes
-      if (apiError.status === 422) {
-        apiError.message = "Invalid question set configuration. Please check your topic and question parameters.";
-        // Add more details about what might be wrong
-        apiError.detail = apiError.detail || "Possible issues: topic too broad, invalid difficulty level, or unsupported question types.";
-      } else if (apiError.status === 401) {
-        apiError.message = "Your session has expired. Please log in again to create a question set.";
-      } else if (apiError.status === 403) {
-        apiError.message = "You don't have permission to create question sets.";
-      } else if (apiError.status === 400) {
-        apiError.message = "Please provide a valid topic and course to generate questions.";
-      } else if (apiError.status >= 500) {
-        apiError.message = "We're having trouble creating your question set. Please try again later.";
-      }
-      
-      throw apiError;
-    }
-  },
-
-  /**
-   * Delete a practice question set
-   * @param questionSetId The ID of the question set to delete
-   * @throws ApiError with standardized format
-   */
-  async deleteQuestionSet(questionSetId: string): Promise<void> {
-    try {
-      await api.delete(`${baseUrl}/${questionSetId}`);
-    } catch (error) {
-      const apiError = handleError(error);
-      
-      // For 404, treat as success since the resource is already gone
-      if (apiError.status === 404) {
-        console.info(`Question set ${questionSetId} already deleted or not found - treating as success`);
-        return;
-      }
-      
-      // Enhanced error messages with recommendations
-      if (apiError.status === 401) {
-        apiError.message = "Your session has expired. Please log in again to delete this question set.";
-      } else if (apiError.status === 403) {
-        apiError.message = "You don't have permission to delete this question set.";
-      } else if (apiError.status >= 500) {
-        apiError.message = "We're having trouble deleting this question set. Please try again later.";
-      }
-      
-      throw apiError;
-    }
-  },
-
-  /**
-   * Update a practice question set metadata
-   * @param questionSetId The ID of the question set to update
-   * @param data The data to update (title, description)
-   * @returns The updated question set
-   * @throws ApiError with standardized format
-   */
-  async updateQuestionSet(
-    questionSetId: string,
-    data: { title?: string; description?: string }
-  ): Promise<QuestionSet> {
-    try {
-      const response = await api.put(`${baseUrl}/${questionSetId}`, data);
-      return response.data;
-    } catch (error) {
-      const apiError = handleError(error);
-      
-      // Detailed error messages for specific scenarios
-      if (apiError.status === 404) {
-        apiError.message = "The question set you're trying to update could not be found.";
-        apiError.detail = `The question set with ID "${questionSetId}" may have been deleted or is no longer available.`;
-      } else if (apiError.status === 400) {
-        apiError.message = "Please provide valid information for updating the question set.";
-        apiError.detail = "Title and description must be in valid format.";
-      } else if (apiError.status === 401) {
-        apiError.message = "Your session has expired. Please log in again to update this question set.";
-      } else if (apiError.status === 403) {
-        apiError.message = "You don't have permission to update this question set.";
-      } else if (apiError.status >= 500) {
-        apiError.message = "We're having trouble updating this question set. Please try again later.";
-      }
-      
-      throw apiError;
-    }
-  },
-
-  /**
-   * Submit answers to practice questions and get results
-   * @param questionSetId The ID of the question set
-   * @param data The answers to submit
-   * @returns The submission results with scoring
-   * @throws ApiError with standardized format
-   */
-  async submitAnswers(
-    questionSetId: string,
-    data: SubmitAnswersRequest
-  ): Promise<SubmissionResult> {
-    try {
-      const response = await api.post(`${baseUrl}/${questionSetId}/submit`, data);
-      return response.data;
-    } catch (error) {
-      const apiError = handleError(error);
-      
-      // Enhanced error messaging with actionable guidance
-      if (apiError.status === 400) {
-        apiError.message = "There was a problem with your answers. Please make sure all required questions are answered.";
-        apiError.detail = "Check that all multiple choice questions have a selected option and all text answers are filled out.";
-      } else if (apiError.status === 404) {
-        apiError.message = "The question set you're trying to submit answers for could not be found.";
-        apiError.detail = `The question set with ID "${questionSetId}" may have been deleted or is no longer available.`;
-      } else if (apiError.status === 401) {
-        apiError.message = "Your session has expired. Please log in again to submit your answers.";
-      } else if (apiError.status === 403) {
-        apiError.message = "You don't have permission to submit answers to this question set.";
-      } else if (apiError.status >= 500) {
-        apiError.message = "We're having trouble submitting your answers. Please try again later.";
-      }
-      
-      throw apiError;
+      console.error(`Failed to fetch practice question set with ID ${id}:`, error);
+      throw error;
     }
   }
-};
+  
+  // Get currently cached questions for a specific set ID
+  getCurrentQuestions(id: string): QuestionType[] | null {
+    return this.currentQuestions[id] || null;
+  }
+  
+    // Delete a practice question set
+    async deletePracticeQuestionSet(id: string): Promise<{ success: boolean; message: string }> {
+      try {
+        const response = await api.delete(`${this.API_URL}/practice-questions/${id}`);
+        
+        // Clean up the questions from cache when deleted
+        if (this.currentQuestions[id]) {
+          delete this.currentQuestions[id];
+        }
+        
+        return response.data;
+        
+      } catch (error) {
+        console.error(`Failed to delete practice question set with ID ${id}:`, error);
+        throw error;
+      }
+    }
+  
+    // Generate new practice questions
+    async generatePracticeQuestions(params: {
+      topic: string;
+      questionCount: number;
+      difficulty: string;
+      questionTypes: string[];
+      courseId?: string;
+      moduleId?: string;
+    }): Promise<PracticeQuestionsSetType> {
+      try {
+        const response = await api.post(`${this.API_URL}/rag/practice-questions`, params);
+        
+        // If the response contains questions, store them in our cache
+        if (response.data && response.data.id && response.data.questions) {
+          this.currentQuestions[response.data.id] = response.data.questions;
+        }
+        
+        return response.data;
+        
+      } catch (error) {
+        console.error('Failed to generate practice questions:', error);
+        throw error;
+      }
+    }
+  
+    // Helper method to get question type icon name
+    getQuestionTypeIcon(type: QuestionTypeEnum): string {
+      switch (type) {
+        case QuestionTypeEnum.MULTIPLE_CHOICE:
+          return 'CheckSquare';
+        case QuestionTypeEnum.SHORT_ANSWER:
+          return 'AlignLeft';
+        case QuestionTypeEnum.TRUE_FALSE:
+          return 'ToggleLeft';
+        case QuestionTypeEnum.FILL_IN_BLANK:
+          return 'TextCursorInput';
+        case QuestionTypeEnum.MATCHING:
+          return 'ArrowLeftRight';
+        default:
+          return 'HelpCircle';
+      }
+    }
+  
+    // Helper method to get readable question type name
+    getQuestionTypeName(type: QuestionTypeEnum): string {
+      switch (type) {
+        case QuestionTypeEnum.MULTIPLE_CHOICE:
+          return 'Multiple Choice';
+        case QuestionTypeEnum.SHORT_ANSWER:
+          return 'Short Answer';
+        case QuestionTypeEnum.TRUE_FALSE:
+          return 'True/False';
+        case QuestionTypeEnum.FILL_IN_BLANK:
+          return 'Fill in the Blank';
+        case QuestionTypeEnum.MATCHING:
+          return 'Matching';
+        default:
+          return 'Unknown';
+      }
+    }
+  
+    // Helper method to get question difficulty color
+    getDifficultyColor(difficulty: string): string {
+      switch (difficulty.toLowerCase()) {
+        case 'basic':
+          return 'bg-green-100 text-green-800 border-green-200';
+        case 'medium':
+          return 'bg-blue-100 text-blue-800 border-blue-200';
+        case 'advanced':
+          return 'bg-purple-100 text-purple-800 border-purple-200';
+        default:
+          return 'bg-gray-100 text-gray-800 border-gray-200';
+      }
+    }
+  }
+  
+  
+  export const practiceQuestionsService = new PracticeQuestionsService();
