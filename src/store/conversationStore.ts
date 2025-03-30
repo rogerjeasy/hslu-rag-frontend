@@ -38,7 +38,7 @@ interface ConversationState {
 
 export const useConversationStore = create<ConversationState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       // Data
       conversations: [],
       currentConversation: null,
@@ -274,7 +274,7 @@ export const useConversationStore = create<ConversationState>()(
           });
           
           // Then process the query in this new conversation
-          const { response, conversationId } = await ragService.processQueryWithConversation(
+          const { response } = await ragService.processQueryWithConversation(
             request,
             conversation.id
           );

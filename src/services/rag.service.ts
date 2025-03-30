@@ -32,10 +32,6 @@ interface BackendRAGContext {
   score?: number;
 }
 
-interface BackendConversationRAGResponse extends BackendRAGResponse {
-  conversation: Record<string, unknown>;
-}
-
 // Define interfaces for API request data
 interface StudyGuideApiData {
   topic: string;

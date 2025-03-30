@@ -4,9 +4,6 @@ import {
   RAGResponse,
   StudyGuideRequest,
   PracticeQuestionsRequest,
-  Question,
-  KnowledgeGap,
-  Strength
 } from '@/types/rag.types';
 import { 
   QueryMessageRequest, 
@@ -39,7 +36,7 @@ interface RAGState {
   setCurrentResponse: (response: RAGResponse | null) => void;
 }
 
-export const useRAGStore = create<RAGState>((set, get) => ({
+export const useRAGStore = create<RAGState>((set) => ({
   // Data
   currentResponse: null,
   studyGuideResponses: {},

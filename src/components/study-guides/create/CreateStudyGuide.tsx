@@ -16,10 +16,11 @@ import { Card, CardContent } from '@/components/ui/card';
 // import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
 import { useRAGStore } from '@/store/ragStore';
+import { StudyGuideResponse, StudyGuideSummary } from '@/types/study-guide.types';
 
 export function CreateStudyGuide() {
   const router = useRouter();
-  const { createGuide } = useStudyGuideStore();
+  // const { createGuide } = useStudyGuideStore();
   const { courses } = useCourseStore();
   
   const [currentStep, setCurrentStep] = useState<number>(0);
@@ -53,7 +54,6 @@ export function CreateStudyGuide() {
     }
   };
 
-  // Submit handler
   const handleSubmit = async () => {
     try {
       setIsSubmitting(true);
@@ -76,11 +76,52 @@ export function CreateStudyGuide() {
       // Generate the study guide using the RAG service
       const response = await generateStudyGuide(studyGuideRequest);
       
-      // Store the response or handle it as needed
-      // You might want to pass the response ID to the redirect
+      // Access potential ID fields in a type-safe way
+      const guideId = typeof response.meta?.id === 'string' 
+        ? response.meta.id 
+        : typeof response.meta?.document_id === 'string'
+          ? response.meta.document_id
+          : typeof response.meta?.studyGuideId === 'string'
+            ? response.meta.studyGuideId
+            : undefined;
       
-      // Navigate to the guides page or specific guide
-      router.push('/study-guides');
+      if (guideId) {
+        // Get the studyGuideStore to update state
+        const studyGuideStore = useStudyGuideStore.getState();
+        
+        // Create a new StudyGuideSummary object
+        const newGuide: StudyGuideSummary = {
+          id: guideId,
+          topic: formData.topic,
+          courseId: formData.courseId,
+          moduleId: formData.moduleId,
+          createdAt: Date.now(),
+          format: formData.format,
+          detailLevel: formData.detailLevel
+        };
+        
+        const studyGuideResponse: StudyGuideResponse = {
+          ...response,
+          queryId: guideId,
+          query: formData.topic,
+          promptType: 'study_guide',
+          timestamp: new Date().toISOString()
+        };
+        
+        studyGuideStore.setCurrentStudyGuide(studyGuideResponse);
+        
+        useStudyGuideStore.setState({
+          studyGuides: [newGuide, ...studyGuideStore.studyGuides],
+          filteredGuides: [newGuide, ...studyGuideStore.filteredGuides]
+        });
+        
+        // Navigate to the specific guide page
+        router.push(`/study-guides/${guideId}`);
+      } else {
+        // Fallback to the main study guides page
+        console.warn('No guide ID found in response, redirecting to main page');
+        router.push('/study-guides');
+      }
       
     } catch (error) {
       console.error('Error creating study guide:', error);
@@ -88,6 +129,7 @@ export function CreateStudyGuide() {
       setIsSubmitting(false);
     }
   };
+
   // Step validation
   const isStepValid = () => {
     if (currentStep === 0) {

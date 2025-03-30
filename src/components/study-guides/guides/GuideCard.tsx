@@ -25,7 +25,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { StudyGuide, GuideType } from '@/types/study-guide.types';
 import { Course } from '@/types/course.types';
-import { formatDate, getGuideBorderColor, getGuideTypeLabel } from '@/utils/guide-utils';
+import { getGuideBorderColor, getGuideTypeLabel } from '@/utils/guide-utils';
 
 interface GuideCardProps {
   guide: StudyGuide;

@@ -82,7 +82,7 @@ const ChatContainer: React.FC = () => {
     createConversation,
     addMessage,
     isLoading: storeLoading,
-    error,
+    // error,
     setCurrentConversation
   } = useConversationStore();
 

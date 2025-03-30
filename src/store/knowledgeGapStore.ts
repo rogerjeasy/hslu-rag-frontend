@@ -4,7 +4,6 @@ import {
   DeleteResponse, 
 } from '@/types/study-guide.types';
 import { knowledgeGapService, KnowledgeGapSummary } from '@/services/knowledge-gap.service';
-import { useRAGStore } from '@/store/ragStore';
 import { KnowledgeGapResponse } from '@/types/rag.types';
 
 interface KnowledgeGapState {

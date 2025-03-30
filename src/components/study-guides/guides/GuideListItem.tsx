@@ -18,7 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { StudyGuide, GuideType } from '@/types/study-guide.types';
 import { Course } from '@/types/course.types';
-import { formatDate, getGuideBorderColor, getGuideTypeLabel } from '@/utils/guide-utils';
+import { getGuideBorderColor, getGuideTypeLabel } from '@/utils/guide-utils';
 
 interface GuideListItemProps {
   guide: StudyGuide;

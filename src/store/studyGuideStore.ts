@@ -5,7 +5,8 @@ import {
   DeleteResponse, 
   DeleteAllResponse,
   DetailLevel,
-  StudyGuideFormat
+  StudyGuideFormat,
+  StudyGuideResponse
 } from '@/types/study-guide.types';
 import { studyGuideService } from '@/services/study-guide.service';
 import { useRAGStore } from '@/store/ragStore';
@@ -15,7 +16,7 @@ interface StudyGuideState {
   // Data
   studyGuides: StudyGuideSummary[];
   filteredGuides: StudyGuideSummary[];
-  currentStudyGuide: RAGResponse | null;
+  currentStudyGuide: StudyGuideResponse | null;
   isLoading: boolean;
   error: string | null;
   
@@ -33,7 +34,7 @@ interface StudyGuideState {
   
   // Data actions
   fetchStudyGuides: (limit?: number) => Promise<void>;
-  getStudyGuide: (id: string) => Promise<RAGResponse>;
+  getStudyGuide: (id: string) => Promise<StudyGuideResponse>;
   createGuide: (
     topic: string,
     courseId: string,
@@ -45,7 +46,7 @@ interface StudyGuideState {
   deleteStudyGuide: (id: string) => Promise<DeleteResponse>;
   deleteAllContent: () => Promise<DeleteAllResponse>;
   resetError: () => void;
-  setCurrentStudyGuide: (guide: RAGResponse | null) => void;
+  setCurrentStudyGuide: (guide: StudyGuideResponse | null) => void;
 }
 
 export const useStudyGuideStore = create<StudyGuideState>((set, get) => ({
@@ -75,12 +76,10 @@ export const useStudyGuideStore = create<StudyGuideState>((set, get) => ({
     get().applyFilters();
   },
   
-  // Filter actions
   applyFilters: () => {
     const { studyGuides, searchTerm, selectedCourse, selectedFormat } = get();
     let result = [...studyGuides];
     
-    // Apply search filter
     if (searchTerm) {
       const lowerSearchTerm = searchTerm.toLowerCase();
       result = result.filter(guide => 
@@ -88,12 +87,10 @@ export const useStudyGuideStore = create<StudyGuideState>((set, get) => ({
       );
     }
     
-    // Apply course filter
     if (selectedCourse) {
       result = result.filter(guide => guide.courseId === selectedCourse);
     }
     
-    // Apply format filter
     if (selectedFormat) {
       result = result.filter(guide => guide.format === selectedFormat);
     }
@@ -158,25 +155,21 @@ export const useStudyGuideStore = create<StudyGuideState>((set, get) => ({
     set({ isLoading: true, error: null });
     
     try {
-      // Create request for RAG service
       const studyGuideRequest = {
         topic,
-        // Omit courseId from main query parameters
         moduleId,
         detailLevel,
         format,
         additionalParams: {
           courseId,
-          // Include a unique request ID to help with debugging
-          requestId: `guide-${Date.now()}`
+          requestId: `guide-${Date.now()}`,
+          includePracticeQuestions: includePracticeQuestions
         }
       };
       
-      // Get the RAG store and use it to generate the study guide
       const { generateStudyGuide } = useRAGStore.getState();
       const response = await generateStudyGuide(studyGuideRequest);
       
-      // After successful creation, refresh the study guides list
       await get().fetchStudyGuides();
       
       set({ isLoading: false });

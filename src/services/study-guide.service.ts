@@ -1,7 +1,6 @@
 // src/services/study-guide.service.ts
 import { api, handleError } from '@/helpers/api';
-import { StudyGuideSummary, StudyGuideCreateDTO, DeleteResponse, DeleteAllResponse } from '@/types/study-guide.types';
-import { RAGResponse } from '@/types/rag.types';
+import { StudyGuideSummary, DeleteResponse, DeleteAllResponse, StudyGuideResponse } from '@/types/study-guide.types';
 
 class StudyGuideService {
   /**
@@ -20,7 +19,7 @@ class StudyGuideService {
   /**
    * Fetch a specific study guide by ID
    */
-  async getStudyGuide(guideId: string): Promise<RAGResponse> {
+  async getStudyGuide(guideId: string): Promise<StudyGuideResponse> {
     try {
       const response = await api.get(`/content/study-guides/${guideId}`);
       return response.data;

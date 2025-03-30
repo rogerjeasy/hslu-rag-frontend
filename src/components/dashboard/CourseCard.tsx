@@ -30,7 +30,6 @@ interface CourseFromAPI {
   lastStudied?: string;
   lastAccessed?: string;
   // Add any other potential properties from the API
-//   [key: string]: any; // Allow for additional properties
 }
 
 // Map course status to badge variant
@@ -56,6 +55,19 @@ const getBadgeText = (course: CourseFromAPI): string => {
   if (course.status) return course.status;
   if (course.difficulty) return course.difficulty;
   return 'Active';
+};
+
+// Function to truncate description text
+const truncateDescription = (description: string | undefined, maxLength: number = 100): string => {
+  if (!description) return 'No description available';
+  
+  if (description.length <= maxLength) return description;
+  
+  // Find the last space before the maxLength to avoid cutting words
+  const lastSpace = description.substring(0, maxLength).lastIndexOf(' ');
+  const truncatedText = description.substring(0, lastSpace > 0 ? lastSpace : maxLength);
+  
+  return `${truncatedText}...`;
 };
 
 interface CourseCardProps {
@@ -89,6 +101,9 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onContinue }) => {
     }
   };
  
+  // Truncate the description to show a preview
+  const descriptionPreview = truncateDescription(course.description);
+ 
   return (
     <motion.div variants={itemVariants}>
       <Card className="h-full flex flex-col">
@@ -99,7 +114,9 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onContinue }) => {
               {getBadgeText(course)}
             </Badge>
           </div>
-          <CardDescription>{course.description || 'No description available'}</CardDescription>
+          <CardDescription title={course.description || 'No description available'}>
+            {descriptionPreview}
+          </CardDescription>
         </CardHeader>
         <CardContent className="flex-1">
           <div className="space-y-4">
@@ -127,7 +144,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, onContinue }) => {
             className="w-full"
             onClick={() => onContinue(course.id)}
           >
-            Continue
+            View Details
           </Button>
         </CardFooter>
       </Card>
