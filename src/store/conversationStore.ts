@@ -38,7 +38,7 @@ interface ConversationState {
 
 export const useConversationStore = create<ConversationState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       // Data
       conversations: [],
       currentConversation: null,
@@ -330,6 +330,9 @@ export const useConversationStore = create<ConversationState>()(
             isLoading: false
           }));
           
+          // Refetch conversations to ensure the list is up-to-date
+          await get().fetchConversations();
+          
           return response;
         } catch (error) {
           console.error('Error deleting conversation:', error);
@@ -353,6 +356,9 @@ export const useConversationStore = create<ConversationState>()(
             currentConversation: null,
             isLoading: false
           });
+          
+          // Refetch to ensure the list is empty
+          await get().fetchConversations();
           
           return response;
         } catch (error) {

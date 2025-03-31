@@ -330,14 +330,8 @@ const processMessage = async (conversationId: string, content: string) => {
         });
         
         if (newConversation.id) {
-          // Add the initial user message
-          await addMessage(newConversation.id, {
-            content,
-            role: 'user'
-          });
-          
-          // Process the message based on query type
-          await processMessage(newConversation.id, content);
+          // Process the message based on query type - this should handle adding the user message internally
+          // await processMessage(newConversation.id, content);
           
           // Update the message count ref with the initial message + response
           lastMessageCountRef.current = 2; // User message + AI response
@@ -357,17 +351,9 @@ const processMessage = async (conversationId: string, content: string) => {
       }
       return;
     }
-
+  
     try {
       setIsLoading(true);
-      
-      // Add the user message
-      await addMessage(currentConversation.id, {
-        content,
-        role: 'user'
-      });
-      
-      // Process the message based on query type
       await processMessage(currentConversation.id, content);
     } catch (error) {
       toast({
