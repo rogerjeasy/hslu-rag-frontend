@@ -44,16 +44,19 @@ class ConversationService {
    */
   async createConversation(data: ConversationCreate): Promise<Conversation> {
     try {
-      // Convert camelCase to snake_case for backend
-      const apiData: Record<string, string | undefined> = {
-        title: data.title,
+      // Use the RAG conversation endpoint
+      // The title is used as the initial query content
+      const apiData = {
+        query: data.title, // Use title as the initial query
         course_id: data.courseId,
         module_id: data.moduleId,
-        topic_id: data.topicId
+        topic_id: data.topicId,
+        prompt_type: 'question_answering', // Default prompt type
+        additional_params: data.meta || {} // Pass any metadata as additional params
       };
       
-      const response = await api.post('/query/conversation', apiData);
-      return this.convertToConversation(response.data);
+      const response = await api.post('/rag/query/conversation', apiData);
+      return this.convertToConversation(response.data.conversation);
     } catch (error) {
       const errorMessage = handleError(error);
       throw new Error(`Failed to create conversation: ${errorMessage}`);
@@ -66,7 +69,6 @@ class ConversationService {
   async getConversations(limit = 20): Promise<ConversationSummary[]> {
     try {
       const response = await api.get(`/conversations?limit=${limit}`);
-      console.log(" response data: ", response.data, " response data map: ", response.data.map(this.convertToConversationSummary));
       return response.data.map(this.convertToConversationSummary);
     } catch (error) {
       const errorMessage = handleError(error);

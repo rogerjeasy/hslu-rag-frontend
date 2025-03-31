@@ -4,13 +4,11 @@
 
 This frontend application serves as the client interface for the HSLU Data Science Exam Preparation RAG (Retrieval-Augmented Generation) system. Designed specifically for MSc students in Applied Information and Data Science at Lucerne University of Applied Sciences and Arts (HSLU), this application provides an intelligent study companion to help students prepare for exams using course-specific materials.
 
-## Features
-
-- **Course-Specific Question Answering**: Get answers based on your course materials
-- **Exam Preparation Summaries**: Generate study guides and topic summaries
-- **Practice Question Generation**: Test your knowledge with auto-generated questions
-- **Concept Clarification**: Understand complex data science concepts with examples
-- **Knowledge Gap Identification**: Identify areas that need additional focus
+## Key Features
+- **AI Study Assistant**: Get instant, accurate answers to your questions based on your specific HSLU course materials and textbooks.
+- **Study Guide Generator**: Generate comprehensive study guides and concise summaries organized by importance and relevance to exams.
+- **Practice Questions**: Test your knowledge with course-specific practice questions that reference specific lectures and concepts.
+- **Authentication with Firebase** for secure user management and data storage.
 
 ## Technology Stack
 
@@ -19,7 +17,6 @@ This frontend application serves as the client interface for the HSLU Data Scien
 - **Modern UI**: Shadcn UI
 - **State Management**: Zustand
 - **Authentication**: JWT with Firebase Auth
-- **Real-time Communication**: Socket.io
 - **Code Rendering**: CodeMirror/Monaco Editor
 - **Data Visualization**: Chart.js/Recharts
 - **Markdown Rendering**: React Markdown
@@ -28,7 +25,6 @@ This frontend application serves as the client interface for the HSLU Data Scien
 
 - Node.js 18.x or higher
 - npm 8.x or higher
-- Access to the HSLU RAG API endpoints
 
 ## Installation
 
@@ -47,8 +43,7 @@ This frontend application serves as the client interface for the HSLU Data Scien
 
    Create a `.env` file in the root directory and add the necessary environment variables:
    ```
-   NEXT_PUBLIC_API_URL=http://localhost:8000
-   NEXT_PUBLIC_SOCKET_URL=http://localhost:8001
+  
    ```
 
 4. Start the development server:
@@ -86,23 +81,40 @@ src/
 ## Key Components
 
 ### Authentication
-
-The authentication system currently supports email/password login. Protected routes require authentication to access course materials and the chat interface.
+The authentication system supports email/password login via Firebase. Protected routes require authentication to access course materials and the chat interface.
 
 ### Chat Interface
-
 The chat interface is the primary interaction point for students. It supports:
-
 - Real-time messaging with the RAG system
 - Message history and conversation management
 - Code syntax highlighting
 - Mathematical formula rendering
-- File attachments for relevant course materials
 - Citation of source materials in responses
 
 ### Course Selection
+Students can browse available courses and create topics to focus their study sessions. This context helps the RAG system provide more targeted and relevant responses.
 
-Students can browse available courses and select specific topics to focus their study sessions. This context helps the RAG system provide more targeted and relevant responses.
+### Study Guide Generator
+The Study Guide Generator allows students to:
+- Create comprehensive study guides tailored to specific courses and selected topics
+- Generate concise summaries based on course materials
+- Organize study materials by importance and conceptual relationships
+- Export study guides in different formats (Markdown)
+- Save and revisit previously generated guides
+
+### Practice Question Engine
+The Practice Question feature helps students test their knowledge through:
+- Course-specific questions that reference lectures and textbooks (based on the selected course and topic)
+- Difficulty levels that adapt based on student performance
+- Detailed explanations with citations to course materials
+- Custom quiz creation based on specific topics or weaknesses
+
+## API Integration
+The frontend communicates with the backend RAG system through a RESTful API. Key endpoints include:
+- `/api/rag/query/conversation`: For real-time messaging with the AI assistant
+- `/api/v1/courses`: For retrieving course information
+- `/api/v1/rag/study-guides`: For generating and managing study guides
+- `/api/v1/rag/practice-questions`: For generating and answering practice questions
 
 ## Development
 
@@ -112,8 +124,6 @@ Students can browse available courses and select specific topics to focus their 
 - `npm run build` - Build the production application
 - `npm start` - Start the production server
 - `npm run lint` - Run ESLint to check code quality
-- `npm run test` - Run Jest tests
-- `npm run cypress` - Run Cypress end-to-end tests
 
 ### Code Style
 
@@ -130,17 +140,7 @@ npm run lint:fix
 ## Deployment
 
 The frontend application can be deployed using various methods:
-
-### Docker Deployment
-
-```bash
-# Build Docker image
-docker build -t hslu-rag-frontend .
-
-# Run Docker container
-docker run -p 3000:3000 hslu-rag-frontend
-```
-
+<!-- 
 ### Static Export (Optional)
 
 For static hosting environments:
@@ -148,7 +148,7 @@ For static hosting environments:
 ```bash
 npm run build
 npm run export
-```
+``` -->
 
 The static files will be generated in the `out` directory.
 
@@ -159,38 +159,14 @@ This frontend application communicates with the HSLU RAG API for all data retrie
 The main integration points include:
 
 - Authentication API endpoints
-- WebSocket connections for real-time chat
 - Vector search endpoints for content retrieval
 - Document and course management APIs
 
 ## Security Considerations
 
 - All API requests use JWT authentication
-- HTTPS is enforced in production
 - Input sanitization is implemented for all user inputs
-- Content Security Policy (CSP) headers are configured
-- Regular security audits are recommended
-
-## Accessibility
-
-The application is designed with accessibility in mind:
-
-- Semantic HTML structure
-- ARIA attributes where appropriate
-- Keyboard navigation support
-- High contrast mode support
-- Screen reader compatibility
-
-## Browser Support
-
-The application supports all modern browsers:
-
-- Chrome/Edge (latest 2 versions)
-- Firefox (latest 2 versions)
-- Safari (latest 2 versions)
-- Opera (latest version)
-
-Internet Explorer is not supported.
+- Firebase Auth is used for secure user management
 
 ## Contributing
 
@@ -200,17 +176,9 @@ Internet Explorer is not supported.
 4. Push to the branch: `git push origin feature/your-feature-name`
 5. Open a Pull Request
 
-Please ensure your code passes all tests and linting checks before submitting a pull request.
-
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgements
-
-- HSLU Faculty of Information Technology
-- MSc Applied Information and Data Science program
-- All contributors and maintainers
 
 ## Contact
 

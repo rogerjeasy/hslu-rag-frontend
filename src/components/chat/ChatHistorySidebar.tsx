@@ -82,8 +82,24 @@ const ChatHistorySidebar: React.FC<ChatHistorySidebarProps> = ({
 
   const handleDeleteConversation = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
+    
     if (confirm('Are you sure you want to delete this conversation?')) {
+      // Check if we're currently viewing this conversation
+      const isCurrentConversation = pathname === `/chat/${id}`;
+      
+      // If we're viewing this conversation, navigate to the main chat page first
+      if (isCurrentConversation) {
+        router.push('/chat');
+        
+        // Wait a brief moment for navigation to complete
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+      
+      // Then delete the conversation
       await deleteConversation(id);
+      
+      // If we're on the main chat page, we should already see the refreshed list
+      // thanks to the fetchConversations() in the deleteConversation function
     }
   };
 
